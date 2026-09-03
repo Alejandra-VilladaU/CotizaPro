@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
 import { Avatar, Boton, Buscador, Campo, Card, Etiqueta, Modal, Vacio } from '../components/ui'
+import { useAuth } from '../lib/auth'
 import { copCorto, iniciales } from '../lib/format'
 import { calcularTotales } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { TipoCliente } from '../lib/types'
 
 export default function Clientes() {
-  const { datos, cotizacionesDeCliente, crearCliente } = useDatos()
+  const { cotizacionesDeCliente, crearCliente, eliminarCliente, clientesVisibles } = useDatos()
+  const { puede } = useAuth()
   const navigate = useNavigate()
   const [texto, setTexto] = useState('')
   const [abrir, setAbrir] = useState(false)
@@ -21,7 +24,7 @@ export default function Clientes() {
   })
 
   const q = texto.trim().toLowerCase()
-  const lista = datos.clientes.filter((c) =>
+  const lista = clientesVisibles.filter((c) =>
     `${c.nombre} ${c.telefono} ${c.tipo} ${c.obra ?? ''}`.toLowerCase().includes(q),
   )
 
@@ -31,12 +34,14 @@ export default function Clientes() {
         <div>
           <h1 className="text-[22px] font-extrabold text-navy">Clientes</h1>
           <p className="mt-0.5 text-sm text-muted">
-            {datos.clientes.length} clientes con historial de cotizaciones
+            {clientesVisibles.length} clientes con historial de cotizaciones
           </p>
         </div>
-        <Boton variante="primario" onClick={() => setAbrir(true)}>
-          + Nuevo cliente
-        </Boton>
+        {puede('clientes.crear') && (
+          <Boton variante="primario" onClick={() => setAbrir(true)}>
+            + Nuevo cliente
+          </Boton>
+        )}
       </div>
 
       <Buscador valor={texto} onCambio={setTexto} placeholder="Buscar cliente por nombre, teléfono u obra…" />
@@ -56,12 +61,31 @@ export default function Clientes() {
                 <Card className="h-full p-4 transition-shadow hover:shadow-md">
                   <div className="flex items-center gap-3">
                     <Avatar texto={iniciales(c.nombre)} />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-bold text-navy">{c.nombre}</div>
                       <div className="text-xs text-muted">
                         {c.tipo} · {c.telefono}
                       </div>
                     </div>
+                    {puede('clientes.eliminar') && (
+                      <button
+                        type="button"
+                        aria-label={`Eliminar ${c.nombre}`}
+                        className="rounded-md p-2 text-muted hover:bg-surface hover:text-danger"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (
+                            confirm(
+                              `¿Eliminar a ${c.nombre}? Sus cotizaciones quedarán sin cliente asociado.`,
+                            )
+                          ) {
+                            eliminarCliente(c.id)
+                          }
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                   {c.obra !== undefined && c.obra !== '' && (
                     <p className="mt-2 truncate text-xs text-muted">Obra: {c.obra}</p>

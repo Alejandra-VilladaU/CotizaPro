@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Download } from 'lucide-react'
 import { Badge, Boton, Buscador, Card, Chip, Etiqueta, Kpi, Vacio } from '../components/ui'
+import { useAuth } from '../lib/auth'
+import { exportarCotizaciones } from '../lib/export'
 import { cop, copCorto, diasRestantes, fecha, fechaCorta } from '../lib/format'
 import { calcularTotales, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
@@ -24,17 +27,27 @@ const ESTADOS: (EstadoCotizacion | 'Todos')[] = [
 ]
 
 export default function Cotizaciones() {
-  const { datos, cliente, duplicar, cambiarEstado, eliminarCotizacion, crearBorrador } = useDatos()
+  const {
+    datos,
+    cliente,
+    duplicar,
+    cambiarEstado,
+    eliminarCotizacion,
+    crearBorrador,
+    cotizacionesVisibles,
+    puedeEditar,
+  } = useDatos()
+  const { puede, verTodo } = useAuth()
   const navigate = useNavigate()
   const [texto, setTexto] = useState('')
   const [estado, setEstado] = useState<EstadoCotizacion | 'Todos'>('Todos')
 
   const conTotales = useMemo(
     () =>
-      datos.cotizaciones
+      cotizacionesVisibles
         .map((c) => ({ cotizacion: c, total: calcularTotales(c).total }))
         .sort((a, b) => b.cotizacion.creada.localeCompare(a.cotizacion.creada)),
-    [datos.cotizaciones],
+    [cotizacionesVisibles],
   )
 
   const filtradas = conTotales.filter(({ cotizacion: c }) => {
@@ -65,17 +78,35 @@ export default function Cotizaciones() {
           <h1 className="text-[22px] font-extrabold text-navy">Cotizaciones</h1>
           <p className="mt-0.5 text-sm text-muted">
             {conTotales.length} cotizaciones · {copCorto(suma(() => true))} cotizados
+            {verTodo ? ' · todo el equipo' : ' · tus cotizaciones'}
           </p>
         </div>
-        <Boton
-          variante="primario"
-          onClick={() => {
-            crearBorrador()
-            navigate('/')
-          }}
-        >
-          + Nueva cotización
-        </Boton>
+        <div className="flex flex-wrap gap-2">
+          {puede('cotizaciones.exportar') && (
+            <Boton
+              onClick={() =>
+                exportarCotizaciones(
+                  'cotizapro-cotizaciones',
+                  filtradas.map(({ cotizacion }) => cotizacion),
+                  datos.clientes,
+                )
+              }
+            >
+              <Download size={16} /> Exportar Excel
+            </Boton>
+          )}
+          {puede('cotizaciones.crear') && (
+            <Boton
+              variante="primario"
+              onClick={() => {
+                crearBorrador()
+                navigate('/')
+              }}
+            >
+              + Nueva cotización
+            </Boton>
+          )}
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -198,15 +229,17 @@ export default function Cotizaciones() {
                           <Link to={`/pdf/${c.id}`}>
                             <Boton tamano="sm">PDF</Boton>
                           </Link>
-                          <Boton
-                            tamano="sm"
-                            onClick={() => {
-                              duplicar(c.id)
-                              navigate('/cotizacion')
-                            }}
-                          >
-                            Duplicar
-                          </Boton>
+                          {puede('cotizaciones.crear') && (
+                            <Boton
+                              tamano="sm"
+                              onClick={() => {
+                                duplicar(c.id)
+                                navigate('/cotizacion')
+                              }}
+                            >
+                              Duplicar
+                            </Boton>
+                          )}
                           {c.estado === 'Enviada' && (
                             <>
                               <Boton tamano="sm" onClick={() => cambiarEstado(c.id, 'Aceptada')}>
@@ -221,7 +254,7 @@ export default function Cotizaciones() {
                               </Boton>
                             </>
                           )}
-                          {c.estado === 'Borrador' && (
+                          {c.estado === 'Borrador' && puedeEditar(c) && (
                             <Boton
                               tamano="sm"
                               variante="peligro"

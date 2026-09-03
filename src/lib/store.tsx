@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useAuth } from './auth'
 import { estaVencida, itemDesdeMaterial } from './quote'
 import { CLIENTES_SEED, COTIZACIONES_SEED, EMPRESA_SEED, MATERIALES_SEED } from './seed'
 import type { Cliente, Cotizacion, Empresa, Material } from './types'
@@ -67,6 +68,12 @@ type Contexto = {
   cliente: (id: string | null) => Cliente | undefined
   material: (id: string) => Material | undefined
   cotizacionesDeCliente: (clienteId: string) => Cotizacion[]
+  /** Cotizaciones y clientes que el usuario en sesión tiene permitido ver. */
+  cotizacionesVisibles: Cotizacion[]
+  clientesVisibles: Cliente[]
+  esPropia: (c: Cotizacion) => boolean
+  puedeEditar: (c: Cotizacion) => boolean
+  autorizarEdicion: (id: string) => void
 
   crearBorrador: (clienteId?: string | null) => Cotizacion
   asegurarBorrador: () => Cotizacion
@@ -99,6 +106,7 @@ const Ctx = createContext<Contexto | null>(null)
 
 export function ProveedorDatos({ children }: { children: ReactNode }) {
   const [datos, setDatos] = useState<Datos>(leer)
+  const { usuario, verTodo } = useAuth()
 
   useEffect(() => {
     localStorage.setItem(CLAVE, JSON.stringify(datos))
@@ -117,8 +125,15 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
 
   const valor = useMemo<Contexto>(() => {
     const cotizacion = (id: string) => datos.cotizaciones.find((c) => c.id === id)
-    const borrador =
+    const borradorGuardado =
       datos.borradorId === null ? null : (cotizacion(datos.borradorId) ?? null)
+    const esPropia = (c: Cotizacion) =>
+      usuario !== null && (c.vendedorUid ?? null) === usuario.uid
+    // El borrador solo pertenece a quien lo abrió: al cambiar de usuario se descarta.
+    const borrador =
+      borradorGuardado !== null && (verTodo || esPropia(borradorGuardado))
+        ? borradorGuardado
+        : null
 
     const crearBorrador = (clienteId: string | null = null): Cotizacion => {
       const ahora = new Date().toISOString()
@@ -132,7 +147,9 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         vigenciaDias: datos.empresa.vigenciaDias,
         notas: '',
         estado: 'Borrador',
-        vendedor: datos.empresa.vendedor,
+        vendedor: usuario?.nombre ?? datos.empresa.vendedor,
+        vendedorUid: usuario?.uid ?? null,
+        autorizacionEdicion: null,
         creada: ahora,
         emitida: null,
         actualizada: ahora,
@@ -159,8 +176,33 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       material: (id) => datos.materiales.find((m) => m.id === id),
       cotizacionesDeCliente: (clienteId) =>
         datos.cotizaciones
-          .filter((c) => c.clienteId === clienteId)
+          .filter((c) => c.clienteId === clienteId && (verTodo || esPropia(c)))
           .sort((a, b) => b.creada.localeCompare(a.creada)),
+
+      cotizacionesVisibles: datos.cotizaciones.filter((c) => verTodo || esPropia(c)),
+      clientesVisibles: verTodo
+        ? datos.clientes
+        : datos.clientes.filter(
+            (cl) =>
+              (cl.creadoPor ?? null) === (usuario?.uid ?? null) ||
+              datos.cotizaciones.some((c) => c.clienteId === cl.id && esPropia(c)),
+          ),
+      esPropia,
+      // El administrador no edita cotizaciones ajenas sin registrar autorización explícita.
+      puedeEditar: (c) =>
+        usuario !== null &&
+        (esPropia(c) ||
+          (usuario.rol === 'Administrador' &&
+            c.autorizacionEdicion !== null &&
+            c.autorizacionEdicion !== undefined)),
+      autorizarEdicion: (id) =>
+        mapear(id, (c) => ({
+          ...c,
+          autorizacionEdicion:
+            usuario === null
+              ? null
+              : { por: usuario.nombre, uid: usuario.uid, fecha: new Date().toISOString() },
+        })),
 
       crearBorrador,
       asegurarBorrador,
@@ -283,7 +325,12 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       abrirBorrador: (id) => setDatos((d) => ({ ...d, borradorId: id })),
 
       crearCliente: (cliente) => {
-        const nuevo: Cliente = { ...cliente, id: nuevoId('C'), creado: new Date().toISOString() }
+        const nuevo: Cliente = {
+          ...cliente,
+          id: nuevoId('C'),
+          creado: new Date().toISOString(),
+          creadoPor: usuario?.uid ?? null,
+        }
         setDatos((d) => ({ ...d, clientes: [...d.clientes, nuevo] }))
         return nuevo
       },
@@ -395,7 +442,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
 
       restablecerDemo: () => setDatos(datosIniciales()),
     }
-  }, [datos, mapear])
+  }, [datos, mapear, usuario, verTodo])
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>
 }
