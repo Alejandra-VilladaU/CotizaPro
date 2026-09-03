@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', 'Liberation Sans', system-ui, sans-serif;
+
+  --color-navy: #04244c;
+  --color-blue: #025cd6;
+  --color-blue-hover: #0148a8;
+  --color-blue-soft: #e8f1fe;
+  --color-surface: #f6f8fb;
+  --color-line: #dde3ea;
+  --color-muted: #6e7887;
+  --color-ok: #128a4b;
+  --color-ok-soft: #e6f5ec;
+  --color-warn: #b4690e;
+  --color-warn-soft: #fdf3e3;
+  --color-danger: #c2321c;
+  --color-danger-soft: #fbeae7;
+
+  --radius-card: 10px;
+  --radius-sheet: 18px;
+
+  --shadow-card: 0 1px 2px rgba(4, 36, 76, 0.08);
+  --shadow-bar: 0 -6px 20px rgba(4, 36, 76, 0.1);
+  --shadow-modal: 0 20px 50px rgba(4, 36, 76, 0.28);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-surface);
+    color: var(--color-navy);
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+}
+
+@utility label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 0;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    border: 0 !important;
+  }
+}

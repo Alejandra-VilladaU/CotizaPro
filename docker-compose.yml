@@ -1,0 +1,8 @@
+services:
+  cotizapro:
+    build: .
+    image: cotizapro:latest
+    container_name: cotizapro
+    restart: unless-stopped
+    ports:
+      - '8080:80'
