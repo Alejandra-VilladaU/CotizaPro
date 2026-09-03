@@ -50,6 +50,8 @@ const MENSAJES: Record<string, string> = {
   'auth/network-request-failed': 'Sin conexión con Firebase. Revisa tu red.',
   'auth/operation-not-allowed':
     'Habilita el proveedor Email/Password en Firebase Console → Authentication.',
+  'auth/configuration-not-found':
+    'El proyecto de Firebase aún no tiene Authentication activado: entra a Firebase Console → Authentication → Comenzar y habilita Email/Password.',
 }
 
 const traducir = (error: unknown): ErrorAuth => {
