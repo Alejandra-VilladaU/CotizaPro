@@ -30,9 +30,15 @@ export type BackendAuth = {
 
 export class ErrorAuth extends Error {}
 
+/** Clave inicial dictable: sin caracteres ambiguos (0/O, 1/I/l) y siempre con dígitos. */
 export const claveTemporal = (): string => {
-  const base = Math.random().toString(36).slice(2, 8).toUpperCase()
-  return `Cotiza${base}*`
+  const letras = 'ABCDEFGHJKMNPQRSTUVWXYZ'
+  const digitos = '23456789'
+  const azar = (alfabeto: string, largo: number) =>
+    Array.from({ length: largo }, () => alfabeto[Math.floor(Math.random() * alfabeto.length)]).join(
+      '',
+    )
+  return `Cotiza${azar(letras, 4)}${azar(digitos, 3)}*`
 }
 
 export const validarPassword = (password: string): string | null => {

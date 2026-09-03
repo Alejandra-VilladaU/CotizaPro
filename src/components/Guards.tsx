@@ -27,7 +27,9 @@ export function RequiereSesion() {
 export function SoloInvitados() {
   const { usuario, cargando } = useAuth()
   if (cargando) return <Cargando />
-  if (usuario !== null && !usuario.debeCambiarPassword) return <Navigate to="/" replace />
+  if (usuario !== null) {
+    return <Navigate to={usuario.debeCambiarPassword ? '/cambiar-password' : '/'} replace />
+  }
   return <Outlet />
 }
 
