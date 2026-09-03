@@ -16,7 +16,6 @@ import {
   getDocs,
   orderBy,
   query,
-  serverTimestamp,
   setDoc,
   updateDoc,
 } from 'firebase/firestore'
@@ -52,6 +51,10 @@ const MENSAJES: Record<string, string> = {
     'Habilita el proveedor Email/Password en Firebase Console → Authentication.',
   'auth/configuration-not-found':
     'El proyecto de Firebase aún no tiene Authentication activado: entra a Firebase Console → Authentication → Comenzar y habilita Email/Password.',
+  'permission-denied':
+    'Tu perfil no tiene permiso para esta acción. Pide al administrador que revise las reglas de Firestore.',
+  unavailable: 'Sin conexión con Firestore. Revisa tu red e inténtalo de nuevo.',
+  unauthenticated: 'La sesión expiró. Vuelve a iniciar sesión.',
 }
 
 const traducir = (error: unknown): ErrorAuth => {
@@ -111,10 +114,10 @@ export function backendFirebase(): BackendAuth {
       try {
         const credencial = await signInWithEmailAndPassword(authFirebase(), email.trim(), password)
         const perfil = await leerPerfil(credencial.user)
+        // La marca de último ingreso es informativa: si falla, la sesión sigue siendo válida.
         await updateDoc(doc(dbFirebase(), COLECCION, perfil.uid), {
           ultimoIngreso: new Date().toISOString(),
-          visto: serverTimestamp(),
-        })
+        }).catch(() => undefined)
         return perfil
       } catch (error) {
         if (error instanceof ErrorAuth) {
