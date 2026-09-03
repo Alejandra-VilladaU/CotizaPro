@@ -179,7 +179,14 @@ export function backendLocal(): BackendAuth {
         .sort((a, b) => a.nombre.localeCompare(b.nombre))
     },
 
-    crearVendedor: async ({ nombre, email, password, rol, permisos }: AltaVendedor) => {
+    crearVendedor: async ({
+      nombre,
+      email,
+      password,
+      rol,
+      permisos,
+      debeCambiarPassword,
+    }: AltaVendedor) => {
       const datos = await sembrar()
       if (datos.usuarios.some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
         throw new ErrorAuth('Ya existe un usuario con ese correo.')
@@ -189,7 +196,7 @@ export function backendLocal(): BackendAuth {
         email: email.trim(),
         nombre,
         rol,
-        debeCambiarPassword: true,
+        debeCambiarPassword,
         activo: true,
         permisos,
         creado: new Date().toISOString(),

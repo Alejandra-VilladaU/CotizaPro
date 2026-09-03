@@ -6,6 +6,8 @@ export type AltaVendedor = {
   password: string
   rol: Rol
   permisos: Permiso[]
+  /** Obliga a definir una contraseña propia en el primer ingreso. */
+  debeCambiarPassword: boolean
 }
 
 export type CambiosUsuario = Partial<

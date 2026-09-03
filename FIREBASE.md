@@ -87,6 +87,18 @@ primer ingreso.
 4. Entra a la app con ese correo. Desde **Usuarios** ya puedes crear vendedores sin volver a
    la consola.
 
+Si este primer administrador ya eligió su contraseña definitiva, deja
+`debeCambiarPassword: false` y entrará directo al panel.
+
+## 4.1 Crear más administradores
+
+Lo normal es hacerlo **desde la app**: *Usuarios → Crear usuario → Perfil: Administrador*. Al
+elegir ese perfil se desmarca solo la casilla *Debe cambiar la clave en el primer ingreso*
+(puedes volver a marcarla si entregas una clave temporal).
+
+También puedes hacerlo desde la consola repitiendo el paso 4: crear el usuario en
+**Authentication** y su documento en `usuarios/{UID}` con `rol: "Administrador"`.
+
 ## 5. Cómo funciona el flujo
 
 - **Login**: `signInWithEmailAndPassword`. Si el usuario no tiene documento en `usuarios` o
@@ -98,6 +110,8 @@ primer ingreso.
   Mientras esa bandera esté activa, la app solo permite la pantalla *Crea tu contraseña*
   (mínimo 8 caracteres, con letras y números). Al guardarla, `updatePassword` cambia la clave
   y la bandera pasa a `false`.
+- **Cambio obligatorio opcional**: la casilla del formulario decide el valor inicial de
+  `debeCambiarPassword`. Viene marcada para vendedores y desmarcada para administradores.
 - **Crear vendedores sin perder la sesión**: la creación usa una **instancia secundaria** de
   Firebase (`cotizapro-alta-usuarios`), porque `createUserWithEmailAndPassword` iniciaría
   sesión con el usuario nuevo en la instancia principal.

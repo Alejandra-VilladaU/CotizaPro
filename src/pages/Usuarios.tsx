@@ -13,13 +13,20 @@ import {
   type Usuario,
 } from '../lib/roles'
 
-type Alta = { nombre: string; email: string; rol: Rol; password: string }
+type Alta = {
+  nombre: string
+  email: string
+  rol: Rol
+  password: string
+  debeCambiarPassword: boolean
+}
 
 const altaVacia = (): Alta => ({
   nombre: '',
   email: '',
   rol: 'Vendedor',
   password: claveTemporal(),
+  debeCambiarPassword: true,
 })
 
 export default function Usuarios() {
@@ -62,11 +69,14 @@ export default function Usuarios() {
         password: alta.password,
         rol: alta.rol,
         permisos: permisosPorDefecto(alta.rol),
+        debeCambiarPassword: alta.debeCambiarPassword,
       })
       setAlta(null)
       setError(null)
       setAviso(
-        `Usuario ${nuevo.email} creado. Entrégale la clave inicial ${alta.password}: la app le exigirá cambiarla en el primer ingreso.`,
+        alta.debeCambiarPassword
+          ? `Usuario ${nuevo.email} creado. Entrégale la clave inicial ${alta.password}: la app le exigirá cambiarla en el primer ingreso.`
+          : `Usuario ${nuevo.email} creado con la clave ${alta.password}, sin cambio obligatorio en el primer ingreso.`,
       )
       await recargar()
     } catch (fallo) {
@@ -234,7 +244,11 @@ export default function Usuarios() {
               <Etiqueta className="mb-1">Perfil</Etiqueta>
               <select
                 value={alta.rol}
-                onChange={(e) => setAlta({ ...alta, rol: e.target.value as Rol })}
+                onChange={(e) => {
+                  const rol = e.target.value as Rol
+                  // Los vendedores estrenan clave propia; un administrador suele definirla él mismo.
+                  setAlta({ ...alta, rol, debeCambiarPassword: rol === 'Vendedor' })
+                }}
                 className="w-full rounded-[10px] border border-line bg-white px-3 py-2.5 text-sm text-navy outline-none focus:border-blue"
               >
                 <option value="Vendedor">Vendedor</option>
@@ -263,6 +277,15 @@ export default function Usuarios() {
                 </Boton>
               </div>
             </div>
+            <label className="flex items-center gap-3 rounded-[10px] border border-line px-3 py-2.5 text-sm text-navy">
+              <input
+                type="checkbox"
+                checked={alta.debeCambiarPassword}
+                onChange={(e) => setAlta({ ...alta, debeCambiarPassword: e.target.checked })}
+                className="h-4 w-4 accent-blue"
+              />
+              Debe cambiar la clave en el primer ingreso
+            </label>
             <Boton
               variante="primario"
               onClick={() => void crear()}

@@ -155,7 +155,14 @@ export function backendFirebase(): BackendAuth {
       return instantanea.docs.map((d) => perfilDesde(d.id, null, d.data() as PerfilGuardado))
     },
 
-    crearVendedor: async ({ nombre, email, password, rol, permisos }: AltaVendedor) => {
+    crearVendedor: async ({
+      nombre,
+      email,
+      password,
+      rol,
+      permisos,
+      debeCambiarPassword,
+    }: AltaVendedor) => {
       try {
         // Instancia secundaria: crear el usuario no debe cerrar la sesión del administrador.
         const credencial = await createUserWithEmailAndPassword(
@@ -168,7 +175,7 @@ export function backendFirebase(): BackendAuth {
           email: email.trim(),
           nombre,
           rol,
-          debeCambiarPassword: true,
+          debeCambiarPassword,
           activo: true,
           permisos,
           creado: new Date().toISOString(),
