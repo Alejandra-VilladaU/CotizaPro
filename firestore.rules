@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Reglas de seguridad de CotizaPro.
+// Publícalas con: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function perfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function esAdmin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && perfil().rol == 'Administrador'
+        && perfil().activo == true;
+    }
+
+    match /usuarios/{uid} {
+      // Cada usuario lee su propio perfil; el administrador lee todos.
+      allow get: if autenticado() && (request.auth.uid == uid || esAdmin());
+      allow list: if esAdmin();
+
+      // Solo el administrador crea perfiles (rol, permisos y estado incluidos).
+      allow create: if esAdmin();
+
+      // El propio usuario únicamente puede apagar su bandera de primer ingreso
+      // y registrar su último acceso: nunca su rol, permisos ni estado activo.
+      allow update: if esAdmin()
+        || (
+          request.auth.uid == uid
+          && request.resource.data.rol == resource.data.rol
+          && request.resource.data.permisos == resource.data.permisos
+          && request.resource.data.activo == resource.data.activo
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['debeCambiarPassword', 'ultimoIngreso'])
+        );
+
+      allow delete: if esAdmin();
+    }
+  }
+}

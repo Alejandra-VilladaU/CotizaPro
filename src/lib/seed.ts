@@ -8,6 +8,7 @@ const hace = (dias: number): string => {
 
 export const EMPRESA_SEED: Empresa = {
   nombre: 'Depósito de Materiales La Central S.A.S.',
+  logoUrl: '/wordmark_tag.png',
   nit: '900.123.456-7',
   direccion: 'Cra 48 #32-15, Medellín',
   telefono: '604 444 1122',
@@ -75,6 +76,7 @@ export const CLIENTES_SEED: Cliente[] = [
     email: 'jorge.ramirez@correo.co',
     obra: 'Casa Robledo — Cra 80 #64-12',
     creado: hace(420),
+    creadoPor: 'demo-vendedor',
   },
   {
     id: 'C02',
@@ -85,6 +87,7 @@ export const CLIENTES_SEED: Cliente[] = [
     email: 'compras@aldea.co',
     obra: 'Torre Aldea 2 — Envigado',
     creado: hace(310),
+    creadoPor: 'demo-vendedor',
   },
   {
     id: 'C03',
@@ -94,6 +97,7 @@ export const CLIENTES_SEED: Cliente[] = [
     documento: 'C.C. 43.998.120',
     obra: 'Remodelación apto 402',
     creado: hace(180),
+    creadoPor: 'demo-vendedor',
   },
   {
     id: 'C04',
@@ -103,6 +107,7 @@ export const CLIENTES_SEED: Cliente[] = [
     documento: 'NIT 900.884.771-1',
     email: 'pedidos@elprogreso.co',
     creado: hace(140),
+    creadoPor: 'demo-vendedor',
   },
   {
     id: 'C05',
@@ -112,6 +117,7 @@ export const CLIENTES_SEED: Cliente[] = [
     documento: 'C.C. 1.017.442.980',
     obra: 'Local comercial Laureles',
     creado: hace(95),
+    creadoPor: 'demo-vendedor',
   },
 ]
 
@@ -147,6 +153,7 @@ export const COTIZACIONES_SEED: Cotizacion[] = [
     notas: 'Entrega en obra Casa Robledo. Confirmar descargue con el maestro.',
     estado: 'Enviada',
     vendedor: 'Camilo Muñoz',
+    vendedorUid: 'demo-vendedor',
     creada: hace(2),
     emitida: hace(2),
     actualizada: hace(2),
@@ -162,6 +169,7 @@ export const COTIZACIONES_SEED: Cotizacion[] = [
     notas: '',
     estado: 'Aceptada',
     vendedor: 'Camilo Muñoz',
+    vendedorUid: 'demo-vendedor',
     creada: hace(24),
     emitida: hace(24),
     actualizada: hace(20),
@@ -177,6 +185,7 @@ export const COTIZACIONES_SEED: Cotizacion[] = [
     notas: '',
     estado: 'Vencida',
     vendedor: 'Camilo Muñoz',
+    vendedorUid: 'demo-vendedor',
     creada: hace(48),
     emitida: hace(48),
     actualizada: hace(48),
@@ -192,6 +201,7 @@ export const COTIZACIONES_SEED: Cotizacion[] = [
     notas: 'Despacho por etapas según cronograma de losa.',
     estado: 'Aceptada',
     vendedor: 'Camilo Muñoz',
+    vendedorUid: 'demo-vendedor',
     creada: hace(6),
     emitida: hace(6),
     actualizada: hace(4),
@@ -207,6 +217,7 @@ export const COTIZACIONES_SEED: Cotizacion[] = [
     notas: '',
     estado: 'Enviada',
     vendedor: 'Camilo Muñoz',
+    vendedorUid: 'demo-vendedor',
     creada: hace(13),
     emitida: hace(13),
     actualizada: hace(13),
@@ -222,6 +233,7 @@ export const COTIZACIONES_SEED: Cotizacion[] = [
     notas: '',
     estado: 'Rechazada',
     vendedor: 'Camilo Muñoz',
+    vendedorUid: 'demo-vendedor',
     creada: hace(9),
     emitida: hace(9),
     actualizada: hace(7),
@@ -237,6 +249,7 @@ export const COTIZACIONES_SEED: Cotizacion[] = [
     notas: '',
     estado: 'Borrador',
     vendedor: 'Camilo Muñoz',
+    vendedorUid: 'demo-vendedor',
     creada: hace(1),
     emitida: null,
     actualizada: hace(1),

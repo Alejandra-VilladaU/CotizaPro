@@ -44,7 +44,7 @@ export default function Pdf() {
       <article className="print-sheet mx-auto w-[816px] max-w-full bg-white p-[46px] shadow-[0_10px_30px_rgba(4,36,76,0.12)]">
         <header className="flex items-start justify-between gap-8 border-b-[3px] border-navy pb-4">
           <div>
-            <img src="/wordmark_tag.png" alt="CotizaPro" className="h-11 w-auto" />
+            <img src={datos.empresa.logoUrl} alt="CotizaPro" className="h-11 w-auto" />
             <div className="mt-3 text-[11px] leading-relaxed text-muted">
               <div className="text-[13px] font-bold text-navy">{empresa.nombre}</div>
               NIT {empresa.nit} · {empresa.direccion}
@@ -182,7 +182,7 @@ export default function Pdf() {
             </div>
           </div>
           <div className="text-right">
-            <img src="/wordmark_tag.png" alt="CotizaPro" className="ml-auto h-8 w-auto" />
+            <img src={datos.empresa.logoUrl} alt="CotizaPro" className="ml-auto h-8 w-auto" />
             <div className="mt-1 text-[10px] text-muted">
               Cotización generada con CotizaPro · Página 1 de 1
             </div>

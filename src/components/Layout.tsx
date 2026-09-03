@@ -1,26 +1,72 @@
 import {
+  BarChart3,
   Boxes,
   FileText,
+  LogOut,
   Search,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   Users,
   type LucideIcon,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { cop } from '../lib/format'
+import { useAuth } from '../lib/auth'
+import { cop, iniciales } from '../lib/format'
 import { calcularTotales } from '../lib/quote'
+import type { Permiso } from '../lib/roles'
 import { useDatos } from '../lib/store'
+import { Avatar, Badge } from './ui'
 
-type Entrada = { to: string; label: string; corto: string; icono: LucideIcon }
+type Entrada = {
+  to: string
+  label: string
+  corto: string
+  icono: LucideIcon
+  permiso?: Permiso
+  /** Entradas de gestión: el vendedor nunca las ve. */
+  soloAdmin?: boolean
+}
 
 const ENTRADAS: Entrada[] = [
-  { to: '/', label: 'Buscar materiales', corto: 'Buscar', icono: Search },
-  { to: '/cotizacion', label: 'Cotización en curso', corto: 'Cotización', icono: ShoppingCart },
+  { to: '/', label: 'Buscar materiales', corto: 'Buscar', icono: Search, permiso: 'materiales.buscar' },
+  {
+    to: '/cotizacion',
+    label: 'Cotización en curso',
+    corto: 'Cotización',
+    icono: ShoppingCart,
+    permiso: 'cotizaciones.crear',
+  },
   { to: '/cotizaciones', label: 'Cotizaciones', corto: 'Historial', icono: FileText },
   { to: '/clientes', label: 'Clientes', corto: 'Clientes', icono: Users },
-  { to: '/inventario', label: 'Inventario', corto: 'Inventario', icono: Boxes },
+  {
+    to: '/inventario',
+    label: 'Inventario',
+    corto: 'Inventario',
+    icono: Boxes,
+    permiso: 'inventario.gestionar',
+  },
+  {
+    to: '/reportes',
+    label: 'Reportes globales',
+    corto: 'Reportes',
+    icono: BarChart3,
+    permiso: 'reportes.globales',
+  },
+  {
+    to: '/usuarios',
+    label: 'Usuarios',
+    corto: 'Usuarios',
+    icono: ShieldCheck,
+    permiso: 'usuarios.gestionar',
+    soloAdmin: true,
+  },
 ]
+
+function useEntradas(): Entrada[] {
+  const { puede } = useAuth()
+  return ENTRADAS.filter((e) => e.permiso === undefined || puede(e.permiso))
+}
 
 export function Logo({ alto = 26 }: { alto?: number }) {
   return (
@@ -33,8 +79,34 @@ export function Logo({ alto = 26 }: { alto?: number }) {
   )
 }
 
+function Sesion({ compacta = false }: { compacta?: boolean }) {
+  const { usuario, cerrarSesion } = useAuth()
+  if (usuario === null) return null
+  return (
+    <div className={`flex items-center gap-2 ${compacta ? '' : 'px-3 py-2'}`}>
+      <Avatar texto={iniciales(usuario.nombre)} size={compacta ? 28 : 34} />
+      {!compacta && (
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-bold text-navy">{usuario.nombre}</div>
+          <Badge tono={usuario.rol === 'Administrador' ? 'blue' : 'gris'}>{usuario.rol}</Badge>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => void cerrarSesion()}
+        aria-label="Cerrar sesión"
+        title="Cerrar sesión"
+        className="rounded-md p-2 text-muted hover:bg-surface"
+      >
+        <LogOut size={16} />
+      </button>
+    </div>
+  )
+}
+
 function Sidebar() {
   const { borrador } = useDatos()
+  const entradas = useEntradas()
   const items = borrador?.items.length ?? 0
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-white lg:flex">
@@ -42,7 +114,7 @@ function Sidebar() {
         <Logo />
       </div>
       <nav className="flex-1 px-2 py-2">
-        {ENTRADAS.map(({ to, label, icono: Icono }) => (
+        {entradas.map(({ to, label, icono: Icono }) => (
           <NavLink
             key={to}
             to={to}
@@ -66,6 +138,7 @@ function Sidebar() {
         ))}
       </nav>
       <div className="border-t border-line p-2">
+        <Sesion />
         <NavLink
           to="/ajustes"
           className={({ isActive }) =>
@@ -84,10 +157,13 @@ function Sidebar() {
 
 function BarraMovil() {
   const { borrador } = useDatos()
+  const entradas = useEntradas()
   const items = borrador?.items.length ?? 0
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-white lg:hidden">
-      {ENTRADAS.filter((e) => e.to !== '/inventario').map(({ to, corto, icono: Icono }) => (
+      {entradas
+        .filter((e) => e.to !== '/inventario' && e.soloAdmin !== true)
+        .map(({ to, corto, icono: Icono }) => (
         <NavLink
           key={to}
           to={to}
@@ -106,7 +182,7 @@ function BarraMovil() {
             </span>
           )}
         </NavLink>
-      ))}
+        ))}
       <NavLink
         to="/ajustes"
         className={({ isActive }) =>
@@ -156,9 +232,7 @@ export default function Layout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-between border-b border-line bg-white px-4 lg:hidden">
           <Logo alto={22} />
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
-            Busca. Cotiza. Construye.
-          </span>
+          <Sesion compacta />
         </header>
         <main className="min-w-0 flex-1 pb-32 lg:pb-0">
           <Outlet />
