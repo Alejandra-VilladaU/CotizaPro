@@ -92,9 +92,9 @@ Si este primer administrador ya eligió su contraseña definitiva, deja
 
 ## 4.1 Crear más administradores
 
-Lo normal es hacerlo **desde la app**: *Usuarios → Crear usuario → Perfil: Administrador*. Al
-elegir ese perfil se desmarca solo la casilla *Debe cambiar la clave en el primer ingreso*
-(puedes volver a marcarla si entregas una clave temporal).
+Lo normal es hacerlo **desde la app**: *Usuarios → Crear usuario → Perfil: Administrador*. Por
+seguridad, todo perfil creado desde la app —vendedor o administrador— debe cambiar la clave
+inicial en su primer ingreso.
 
 También puedes hacerlo desde la consola repitiendo el paso 4: crear el usuario en
 **Authentication** y su documento en `usuarios/{UID}` con `rol: "Administrador"`.
@@ -106,12 +106,12 @@ También puedes hacerlo desde la consola repitiendo el paso 4: crear el usuario 
   basta para entrar a CotizaPro.
 - **Recuperar contraseña**: `sendPasswordResetEmail`. El correo lo envía Firebase; puedes
   personalizar la plantilla en **Authentication → Templates**.
-- **Primer ingreso**: al crear un vendedor, su perfil queda con `debeCambiarPassword: true`.
+- **Primer ingreso**: todo usuario creado desde la app queda con `debeCambiarPassword: true`.
   Mientras esa bandera esté activa, la app solo permite la pantalla *Crea tu contraseña*
   (mínimo 8 caracteres, con letras y números). Al guardarla, `updatePassword` cambia la clave
   y la bandera pasa a `false`.
-- **Cambio obligatorio opcional**: la casilla del formulario decide el valor inicial de
-  `debeCambiarPassword`. Viene marcada para vendedores y desmarcada para administradores.
+  La única excepción es el primer administrador creado a mano en la consola, donde tú decides
+  el valor de la bandera.
 - **Crear vendedores sin perder la sesión**: la creación usa una **instancia secundaria** de
   Firebase (`cotizapro-alta-usuarios`), porque `createUserWithEmailAndPassword` iniciaría
   sesión con el usuario nuevo en la instancia principal.
