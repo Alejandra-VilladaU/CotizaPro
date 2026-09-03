@@ -21,7 +21,7 @@ Elige una opción:
 En la máquina donde compiles (tu PC o el servidor):
 
 ```bash
-node -v          # 20.19+ o 22.12+ (recomendado Node 22 LTS)
+node -v          # 20.19+ (recomendado Node 22 LTS)
 npm ci           # instala exactamente el package-lock.json
 npm run build    # genera dist/
 npm run preview  # opcional: prueba dist/ en http://localhost:4173

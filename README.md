@@ -4,7 +4,7 @@ Aplicación web lista para usar para consultar materiales del inventario, agrega
 generar cotizaciones confiables (con IVA, descuentos y vigencia) y conservar el historial por
 cliente.
 
-- **Stack:** React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + React Router.
+- **Stack:** React 19 + TypeScript + Vite 7 + Tailwind CSS 4 + React Router.
 - **Datos:** persistidos en el navegador (`localStorage`, clave `cotizapro.v1`) con catálogo demo
   de 30 materiales, 5 clientes y 8 cotizaciones.
 - **Sin backend:** no necesita base de datos, servidor de aplicación ni credenciales; se despliega
@@ -57,7 +57,7 @@ material; si no, se crea.
 
 ## Ejecutar en local
 
-Requiere **Node.js 20.19+ o 22.12+** (recomendado 22 LTS) y npm.
+Requiere **Node.js 20.19+** (recomendado 22 LTS) y npm.
 
 ```bash
 npm install
@@ -69,7 +69,7 @@ Otros comandos:
 ```bash
 npm run build        # typecheck (tsc -b) + build de producción en dist/
 npm run preview      # sirve dist/ en http://localhost:4173
-npm run lint         # oxlint
+npm run typecheck    # tsc -b
 ```
 
 No hay variables de entorno obligatorias: el bundle es 100 % estático.
