@@ -89,6 +89,15 @@ service cloud.firestore {
         || (activo() && resource.data.vendedorUid == request.auth.uid);
     }
 
+    // consecutivos/cotizaciones: contador compartido del número de cotización. Cualquier
+    // vendedor activo lo incrementa dentro de una transacción, pero nunca lo retrocede.
+    match /consecutivos/{documento} {
+      allow read: if activo();
+      allow create: if activo();
+      allow update: if activo() && request.resource.data.ultimo > resource.data.ultimo;
+      allow delete: if esAdmin();
+    }
+
     // config/empresa: datos de la empresa (logo, NIT, IVA); solo el administrador los edita.
     match /config/{documento} {
       allow read: if activo();

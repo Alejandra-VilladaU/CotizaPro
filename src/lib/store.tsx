@@ -103,7 +103,7 @@ type Contexto = {
   cambiarDescuentoLinea: (cotizacionId: string, materialId: string, descuento: number) => void
   quitarItem: (cotizacionId: string, materialId: string) => void
   sincronizarPrecios: (cotizacionId: string) => void
-  generarCotizacion: (id: string) => number
+  generarCotizacion: (id: string) => Promise<number>
   cambiarEstado: (id: string, estado: Cotizacion['estado']) => void
   duplicar: (id: string) => string
   eliminarCotizacion: (id: string) => void
@@ -178,6 +178,15 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
     )
     return dejar
   }, [backend, enLaNube])
+
+  // El administrador ve todas las cotizaciones: aprovecha para alinear el contador
+  // compartido con los números que ya existían antes de crearlo.
+  useEffect(() => {
+    if (!enLaNube || !verTodo || cargando) return
+    const maximo = datos.cotizaciones.reduce((acc, c) => Math.max(acc, c.numero ?? 0), 0)
+    if (maximo === 0) return
+    void backend.sincronizarConsecutivo(maximo).catch(() => undefined)
+  }, [backend, enLaNube, verTodo, cargando, datos.cotizaciones])
 
   // En modo demo la persistencia sigue siendo el navegador.
   useEffect(() => {
@@ -401,9 +410,12 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         }))
       },
 
-      generarCotizacion: (id) => {
-        const maximo = ref.current.cotizaciones.reduce((acc, c) => Math.max(acc, c.numero ?? 0), 1000)
-        const numero = maximo + 1
+      generarCotizacion: async (id) => {
+        const maximo = ref.current.cotizaciones.reduce((acc, c) => Math.max(acc, c.numero ?? 0), 0)
+        // El consecutivo se reserva en Firestore: un vendedor no ve las cotizaciones de
+        // los demás, así que el máximo local solo sirve de respaldo en modo demo.
+        const reservado = await backend.siguienteNumero(maximo).catch(() => null)
+        const numero = reservado ?? Math.max(maximo, 1000) + 1
         const ahora = new Date().toISOString()
         const siguiente = mapear(id, (c) => ({
           ...c,

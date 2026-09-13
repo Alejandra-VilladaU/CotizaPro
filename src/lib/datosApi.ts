@@ -28,6 +28,14 @@ export type BackendDatos = {
   guardarCotizaciones: (cotizaciones: Cotizacion[]) => Promise<void>
   eliminarCotizacion: (id: string) => Promise<void>
   guardarEmpresa: (empresa: Empresa) => Promise<void>
+  /**
+   * Reserva el siguiente número de cotización de forma atómica para todo el equipo.
+   * `minimo` es el mayor número que conoce esta sesión y solo se usa al inicializar el
+   * contador. Devuelve `null` cuando no hay contador compartido (modo local).
+   */
+  siguienteNumero: (minimo: number) => Promise<number | null>
+  /** Sube el contador compartido si quedó por debajo de los números ya emitidos. */
+  sincronizarConsecutivo: (minimo: number) => Promise<void>
   /** Borra los datos de negocio (no toca los perfiles de usuario). */
   vaciar: () => Promise<void>
 }
@@ -45,5 +53,7 @@ export const backendLocalDatos = (): BackendDatos => ({
   guardarCotizaciones: nada,
   eliminarCotizacion: nada,
   guardarEmpresa: nada,
+  siguienteNumero: async () => null,
+  sincronizarConsecutivo: nada,
   vaciar: nada,
 })

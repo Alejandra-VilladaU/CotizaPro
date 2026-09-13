@@ -5,6 +5,7 @@ import {
   getDocs,
   onSnapshot,
   query,
+  runTransaction,
   setDoc,
   where,
   writeBatch,
@@ -21,7 +22,11 @@ export const COLECCIONES = {
   clientes: 'clientes',
   cotizaciones: 'cotizaciones',
   config: 'config',
+  consecutivos: 'consecutivos',
 } as const
+
+/** Documento del consecutivo de cotizaciones: consecutivos/cotizaciones. */
+export const DOC_CONSECUTIVO = 'cotizaciones'
 
 /** Documento único con los datos de la empresa: config/empresa. */
 export const DOC_EMPRESA = 'empresa'
@@ -145,8 +150,32 @@ export function backendFirestore(usuario: Usuario): BackendDatos {
       await setDoc(doc(db(), COLECCIONES.config, DOC_EMPRESA), limpiar(empresa), { merge: true })
     },
 
+    // El número lo reserva una transacción: dos vendedores que emiten a la vez no
+    // pueden obtener el mismo consecutivo (cada uno solo ve sus propias cotizaciones).
+    siguienteNumero: async (minimo) => {
+      const contador = doc(db(), COLECCIONES.consecutivos, DOC_CONSECUTIVO)
+      return runTransaction(db(), async (tx) => {
+        const snap = await tx.get(contador)
+        const ultimo = snap.exists() ? Number(snap.data().ultimo ?? 0) : 0
+        const siguiente = Math.max(ultimo, minimo, 1000) + 1
+        tx.set(contador, { ultimo: siguiente, actualizado: new Date().toISOString() })
+        return siguiente
+      })
+    },
+
+    sincronizarConsecutivo: async (minimo) => {
+      const contador = doc(db(), COLECCIONES.consecutivos, DOC_CONSECUTIVO)
+      await runTransaction(db(), async (tx) => {
+        const snap = await tx.get(contador)
+        const ultimo = snap.exists() ? Number(snap.data().ultimo ?? 0) : 0
+        if (ultimo >= minimo) return
+        tx.set(contador, { ultimo: minimo, actualizado: new Date().toISOString() })
+      })
+    },
+
     vaciar: async () => {
       await borrarTodo(COLECCIONES.cotizaciones)
+      await deleteDoc(doc(db(), COLECCIONES.consecutivos, DOC_CONSECUTIVO)).catch(() => undefined)
       await borrarTodo(COLECCIONES.clientes)
       await borrarTodo(COLECCIONES.materiales)
     },

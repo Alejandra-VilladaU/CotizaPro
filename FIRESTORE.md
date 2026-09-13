@@ -16,6 +16,7 @@ Base de datos: la predeterminada `(default)`, modo nativo.
 | `clientes` | `{clienteId}` (`C...`) | clientes registrados | Administrador y el vendedor que lo creó |
 | `cotizaciones` | `{cotizacionId}` (`Q...`) | cotizaciones e historial | Administrador y el vendedor dueño |
 | `config` | `empresa` | razón social, NIT, logo, IVA | Administrador |
+| `consecutivos` | `cotizaciones` | último número de cotización emitido | cualquier perfil activo (solo hacia arriba) |
 
 Los identificadores los genera la app (por ejemplo `MLX1F2AB3CD`), no son autogenerados por
 Firestore, para que un mismo registro se pueda migrar desde el navegador sin duplicarse.
@@ -159,6 +160,21 @@ Documento único con los datos que encabezan el PDF y los valores por defecto de
 `nombre`, `logoUrl`, `nit`, `direccion`, `telefono`, `email`, `vendedor`, `ivaPct`,
 `vigenciaDias`, `condiciones`, `notas`.
 
+## `consecutivos/cotizaciones`
+
+Contador compartido del número de cotización:
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `ultimo` | number | último consecutivo entregado; arranca en 1000 |
+| `actualizado` | string ISO | |
+
+Al generar una cotización la app reserva el número con `runTransaction`, así que dos vendedores
+que emiten al mismo tiempo no pueden obtener el mismo consecutivo. Es necesario porque un
+vendedor no puede leer las cotizaciones de los demás y no podría calcular el máximo por su
+cuenta. Las reglas solo permiten subir el contador, nunca retrocederlo; al restablecer los datos
+el administrador lo borra y la numeración vuelve a empezar en 1001.
+
 ## Relaciones
 
 ```
@@ -177,6 +193,7 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 | `clientes` | leer, crear, editar y eliminar | leer; crear y editar los propios (`creadoPor` = su uid); no eliminar |
 | `cotizaciones` | leer todas, editar y eliminar | solo las propias (`vendedorUid` = su uid) |
 | `config/empresa` | leer y escribir | solo leer |
+| `consecutivos/cotizaciones` | leer, subir y borrar | leer y subir el contador |
 | `usuarios` | leer y administrar todos | solo su perfil; únicamente puede tocar `debeCambiarPassword` y `ultimoIngreso` |
 
 Todo acceso exige sesión iniciada y `activo == true` en el perfil.
@@ -213,8 +230,8 @@ En **Ajustes → Almacenamiento de los datos** (solo administrador):
 - **Subir datos de este navegador**: migra a Firestore el inventario, clientes y cotizaciones que
   quedaron en `localStorage` de versiones anteriores; conserva los ids, así que se puede repetir
   sin duplicar.
-- **Restablecer datos**: borra las tres colecciones y vuelve a cargar el catálogo de ejemplo. No
-  toca los perfiles de `usuarios`.
+- **Restablecer datos**: borra las tres colecciones y el contador de consecutivos, y vuelve a
+  cargar el catálogo de ejemplo. No toca los perfiles de `usuarios`.
 
 Sin credenciales de Firebase la app arranca en modo demo y guarda todo en `localStorage`
 (clave `cotizapro.v1`). La cotización abierta (`cotizapro.borrador`) siempre es local: es una
