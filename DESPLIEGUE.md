@@ -224,16 +224,19 @@ rsync -avz --delete dist/ usuario@IP:/tmp/cotizapro-dist/ && ssh usuario@IP 'sud
 ```
 
 Los nombres de archivo llevan hash, así que el navegador toma la versión nueva sin limpiar caché.
-Los datos del usuario no se tocan: viven en su navegador.
+Los datos no se tocan: viven en Firestore.
 
 ## Datos, respaldo y restablecer la demo
 
-- Todo se guarda en `localStorage`, clave `cotizapro.v1`, por navegador y por dominio.
-- **Respaldo manual:** consola del navegador (F12) →
-  `copy(localStorage.getItem('cotizapro.v1'))` y guarda el JSON.
-- **Restaurar:** `localStorage.setItem('cotizapro.v1', '<JSON pegado>')` y recarga.
-- **Volver a la demo:** *Ajustes → Restablecer datos*, o
-  `localStorage.removeItem('cotizapro.v1')` y recarga.
+- Con `.env` configurado, inventario, clientes y cotizaciones viven en Firestore
+  (ver [FIRESTORE.md](./FIRESTORE.md)); publica `firestore.rules` antes de salir a producción.
+- **Respaldo:** `gcloud firestore export gs://<bucket>/cotizapro-$(date +%F)` o
+  Consola → Firestore → Importar/Exportar.
+- **Volver a la demo:** *Ajustes → Restablecer datos* (borra las tres colecciones y recarga el
+  catálogo de ejemplo; no toca los perfiles de `usuarios`).
+- En modo demo (sin `.env`) todo queda en `localStorage`, clave `cotizapro.v1`: se respalda con
+  `copy(localStorage.getItem('cotizapro.v1'))` en la consola del navegador y se sube a Firestore
+  desde *Ajustes → Subir datos de este navegador*.
 
 ## Lista de verificación posdespliegue
 
@@ -244,10 +247,10 @@ Los datos del usuario no se tocan: viven en su navegador.
 - [ ] En móvil se ve la barra inferior de navegación y el total flotante.
 - [ ] HTTPS activo y renovación automática (`certbot.timer` o el proveedor).
 
-## Escalar a multiusuario (siguiente paso)
+## Multiusuario
 
-Para que varios vendedores compartan inventario y cotizaciones hace falta reemplazar la capa de
-persistencia (`src/lib/store.tsx`, hoy `localStorage`) por llamadas a una API. Ruta más corta:
-Supabase o PostgreSQL + una API REST con las tablas `materiales`, `clientes`, `cotizaciones`,
-`cotizacion_items`, autenticación por usuario y el consecutivo de numeración en el servidor. Toda la
-lógica de cálculo ya está aislada en `src/lib/quote.ts` y se puede reutilizar tal cual.
+Varios vendedores ya comparten inventario e historial: la persistencia vive en Firestore
+(`src/lib/datosFirestore.ts`) y el modo local (`src/lib/datosApi.ts`) solo se usa como demo sin
+credenciales. Pendiente si crece el volumen: mover el consecutivo de numeración a una
+transacción o a Cloud Functions para evitar números repetidos cuando dos vendedores generan una
+cotización en el mismo instante.

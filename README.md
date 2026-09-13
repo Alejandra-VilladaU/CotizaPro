@@ -8,9 +8,12 @@ cliente.
 - **Acceso:** login con Firebase Authentication, recuperación de contraseña, cambio obligatorio
   en el primer ingreso y perfiles **Administrador** / **Vendedor** con permisos configurables
   (ver [FIREBASE.md](FIREBASE.md)). Sin configurar Firebase arranca en modo demo local.
-- **Datos de negocio:** persistidos en el navegador (`localStorage`, clave `cotizapro.v1`) con
-  catálogo demo de 30 materiales, 5 clientes y 8 cotizaciones.
-- **Despliegue:** sitio estático; el único servicio externo es Firebase para la autenticación.
+- **Datos de negocio:** inventario, clientes y cotizaciones en **Firestore**, compartidos por todo
+  el equipo y sincronizados en tiempo real (colecciones documentadas en
+  [FIRESTORE.md](FIRESTORE.md)). Sin `.env` el modo demo los guarda en `localStorage`
+  (clave `cotizapro.v1`) con catálogo de 30 materiales, 5 clientes y 8 cotizaciones.
+- **Despliegue:** sitio estático; el único servicio externo es Firebase (Authentication +
+  Firestore).
 
 ## Pantallas
 
@@ -87,7 +90,9 @@ cp .env.example .env   # config web de Firebase
 Sin `.env` la app funciona en **modo demo local** (usuarios en `localStorage`,
 `admin@cotizapro.co` / `Admin1234` y `vendedor@cotizapro.co` / `Vendedor1234`). Para el login
 real, sigue [FIREBASE.md](./FIREBASE.md): crear el proyecto, habilitar Email/Password, publicar
-`firestore.rules` y crear el primer administrador.
+`firestore.rules` y crear el primer administrador. Las colecciones de datos y sus permisos están
+en [FIRESTORE.md](./FIRESTORE.md); el catálogo inicial se carga desde **Ajustes → Almacenamiento
+de los datos**.
 
 ## Despliegue
 
@@ -96,14 +101,12 @@ Vercel/Netlify, subcarpeta, actualización y respaldo de datos.
 
 ## Limitaciones actuales
 
-- El login, los roles y los permisos sí son remotos (Firebase), pero el inventario, los clientes
-  y las cotizaciones siguen viviendo en el navegador de cada usuario: **no se comparten** entre
-  dispositivos ni personas, y se pierden si se borra el almacenamiento del sitio. Para que el
-  equipo comparta inventario e historial hay que mover esas colecciones a Firestore.
+- El modo demo local (sin `.env`) sigue guardando los datos solo en el navegador; ahí las
+  cotizaciones no se comparten entre dispositivos.
 - El modo demo local (sin Firebase) **no es seguridad de producción**: valida credenciales en el
   propio navegador.
 - El PDF es la vista imprimible del navegador (Imprimir → Guardar como PDF), no generación en
   servidor.
 - WhatsApp y correo se abren con enlaces `wa.me` y `mailto:`; no hay integración con la API oficial.
-- El enlace que se comparte (`/pdf/:id`) solo funciona en el navegador donde se creó la cotización,
-  precisamente porque no hay backend.
+- El enlace que se comparte (`/pdf/:id`) exige sesión: lo abre quien pueda ver esa cotización
+  (su vendedor o un administrador), no un cliente externo.
