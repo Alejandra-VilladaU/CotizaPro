@@ -2,6 +2,8 @@ import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Avatar, Badge, Boton, Card, Chip, Etiqueta, Vacio } from '../components/ui'
+import { useAuth } from '../lib/auth'
+import { exportarDetalle } from '../lib/export'
 import { cop, copCorto, fecha, iniciales } from '../lib/format'
 import { calcularTotales } from '../lib/quote'
 import { useDatos } from '../lib/store'
@@ -21,6 +23,7 @@ export default function ClienteDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { cliente, cotizacionesDeCliente, crearBorrador, duplicar } = useDatos()
+  const { puede } = useAuth()
   const [filtro, setFiltro] = useState<EstadoCotizacion | 'Todas'>('Todas')
 
   const actual = cliente(id ?? null)
@@ -133,15 +136,31 @@ export default function ClienteDetalle() {
                     <Link to={`/pdf/${c.id}`}>
                       <Boton tamano="sm">Ver PDF</Boton>
                     </Link>
-                    <Boton
-                      tamano="sm"
-                      onClick={() => {
-                        duplicar(c.id)
-                        navigate('/cotizacion')
-                      }}
-                    >
-                      Duplicar
-                    </Boton>
+                    {puede('cotizaciones.exportar') && (
+                      <Boton
+                        tamano="sm"
+                        onClick={() =>
+                          exportarDetalle(
+                            `cotizacion-${c.numero ?? 'borrador'}`,
+                            c,
+                            actual,
+                          )
+                        }
+                      >
+                        Excel
+                      </Boton>
+                    )}
+                    {puede('cotizaciones.crear') && (
+                      <Boton
+                        tamano="sm"
+                        onClick={() => {
+                          duplicar(c.id)
+                          navigate('/cotizacion')
+                        }}
+                      >
+                        Duplicar
+                      </Boton>
+                    )}
                     <Link to={`/cotizacion/${c.id}`}>
                       <Boton tamano="sm" variante="primario">
                         Abrir
@@ -154,16 +173,18 @@ export default function ClienteDetalle() {
           </div>
         )}
 
-        <Boton
-          variante="primario"
-          className="mt-5 w-full"
-          onClick={() => {
-            crearBorrador(actual.id)
-            navigate('/')
-          }}
-        >
-          + Nueva cotización para {actual.nombre.split(' ').slice(0, 2).join(' ')}
-        </Boton>
+        {puede('cotizaciones.crear') && (
+          <Boton
+            variante="primario"
+            className="mt-5 w-full"
+            onClick={() => {
+              crearBorrador(actual.id)
+              navigate('/')
+            }}
+          >
+            + Nueva cotización para {actual.nombre.split(' ').slice(0, 2).join(' ')}
+          </Boton>
+        )}
       </div>
     </div>
   )

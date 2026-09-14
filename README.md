@@ -5,10 +5,12 @@ generar cotizaciones confiables (con IVA, descuentos y vigencia) y conservar el 
 cliente.
 
 - **Stack:** React 19 + TypeScript + Vite 7 + Tailwind CSS 4 + React Router.
-- **Datos:** persistidos en el navegador (`localStorage`, clave `cotizapro.v1`) con catálogo demo
-  de 30 materiales, 5 clientes y 8 cotizaciones.
-- **Sin backend:** no necesita base de datos, servidor de aplicación ni credenciales; se despliega
-  como sitio estático.
+- **Acceso:** login con Firebase Authentication, recuperación de contraseña, cambio obligatorio
+  en el primer ingreso y perfiles **Administrador** / **Vendedor** con permisos configurables
+  (ver [FIREBASE.md](FIREBASE.md)). Sin configurar Firebase arranca en modo demo local.
+- **Datos de negocio:** persistidos en el navegador (`localStorage`, clave `cotizapro.v1`) con
+  catálogo demo de 30 materiales, 5 clientes y 8 cotizaciones.
+- **Despliegue:** sitio estático; el único servicio externo es Firebase para la autenticación.
 
 ## Pantallas
 
@@ -20,8 +22,12 @@ cliente.
 | `/cotizaciones` | Historial general con KPIs (enviadas, aceptadas, por vencer, borradores), filtros por estado y acciones (PDF, duplicar, aceptar, rechazar). |
 | `/clientes` | Lista de clientes con total cotizado y aceptadas; crear cliente. |
 | `/clientes/:id` | Historial de cotizaciones de ese cliente. |
-| `/inventario` | Administrar materiales: crear, editar, eliminar, importar CSV, alertas de stock. |
-| `/ajustes` | Datos de la empresa para el PDF, IVA y vigencia por defecto, restablecer datos demo. |
+| `/inventario` | Administrar materiales: crear, editar, eliminar, importar CSV, alertas de stock. *(solo Administrador)* |
+| `/reportes` | Reportes globales: ventas, conversión, ticket promedio, ventas por vendedor y por mes, top clientes. *(solo Administrador)* |
+| `/usuarios` | Crear vendedores con clave temporal, activar/desactivar, eliminar y configurar permisos. *(solo Administrador)* |
+| `/ajustes` | Datos de la empresa para el PDF (logo, NIT, dirección), IVA y vigencia por defecto. *(edición solo Administrador)* |
+| `/login` | Ingreso y recuperación de contraseña. |
+| `/cambiar-password` | Cambio obligatorio de contraseña en el primer ingreso. |
 | `/pdf/:id` | Vista imprimible tamaño carta (Imprimir → "Guardar como PDF"). |
 
 ## Reglas del cotizador
@@ -72,7 +78,16 @@ npm run preview      # sirve dist/ en http://localhost:4173
 npm run typecheck    # tsc -b
 ```
 
-No hay variables de entorno obligatorias: el bundle es 100 % estático.
+### Variables de entorno
+
+```bash
+cp .env.example .env   # config web de Firebase
+```
+
+Sin `.env` la app funciona en **modo demo local** (usuarios en `localStorage`,
+`admin@cotizapro.co` / `Admin1234` y `vendedor@cotizapro.co` / `Vendedor1234`). Para el login
+real, sigue [FIREBASE.md](./FIREBASE.md): crear el proyecto, habilitar Email/Password, publicar
+`firestore.rules` y crear el primer administrador.
 
 ## Despliegue
 
@@ -81,9 +96,12 @@ Vercel/Netlify, subcarpeta, actualización y respaldo de datos.
 
 ## Limitaciones actuales
 
-- Los datos viven en el navegador de cada usuario: **no se comparten** entre dispositivos ni
-  personas, y se pierden si se borra el almacenamiento del sitio. Para varios vendedores hace falta
-  un backend (API + base de datos) y autenticación.
+- El login, los roles y los permisos sí son remotos (Firebase), pero el inventario, los clientes
+  y las cotizaciones siguen viviendo en el navegador de cada usuario: **no se comparten** entre
+  dispositivos ni personas, y se pierden si se borra el almacenamiento del sitio. Para que el
+  equipo comparta inventario e historial hay que mover esas colecciones a Firestore.
+- El modo demo local (sin Firebase) **no es seguridad de producción**: valida credenciales en el
+  propio navegador.
 - El PDF es la vista imprimible del navegador (Imprimir → Guardar como PDF), no generación en
   servidor.
 - WhatsApp y correo se abren con enlaces `wa.me` y `mailto:`; no hay integración con la API oficial.

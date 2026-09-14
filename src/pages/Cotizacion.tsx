@@ -14,7 +14,9 @@ import {
   Stepper,
   Vacio,
 } from '../components/ui'
-import { UNIDAD_LABEL, cop, fechaCorta, hora, iniciales } from '../lib/format'
+import { useAuth } from '../lib/auth'
+import { exportarDetalle } from '../lib/export'
+import { UNIDAD_LABEL, cop, fecha, fechaCorta, hora, iniciales } from '../lib/format'
 import { calcularTotales, mensajeWhatsApp, preciosDesactualizados, totalLinea, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
@@ -34,7 +36,7 @@ function SelectorCliente({
   onCerrar: () => void
   onElegir: (cliente: Cliente) => void
 }) {
-  const { datos, crearCliente } = useDatos()
+  const { clientesVisibles, crearCliente } = useDatos()
   const [texto, setTexto] = useState('')
   const [nuevo, setNuevo] = useState({
     nombre: '',
@@ -44,7 +46,7 @@ function SelectorCliente({
     obra: '',
   })
 
-  const lista = datos.clientes.filter((c) =>
+  const lista = clientesVisibles.filter((c) =>
     `${c.nombre} ${c.telefono} ${c.tipo}`.toLowerCase().includes(texto.trim().toLowerCase()),
   )
 
@@ -323,7 +325,12 @@ export default function CotizacionPage() {
     generarCotizacion,
     agregarMaterial,
     materialesActivos,
+    cotizacionesVisibles,
+    puedeEditar,
+    autorizarEdicion,
+    esPropia,
   } = useDatos()
+  const { puede, usuario } = useAuth()
   const { id } = useParams()
   const navigate = useNavigate()
   const [abrirCliente, setAbrirCliente] = useState(false)
@@ -331,7 +338,9 @@ export default function CotizacionPage() {
   const [busqueda, setBusqueda] = useState('')
 
   const actual = id === undefined ? borrador : (cotizacion(id) ?? null)
-  const editable = actual !== null && actual.estado === 'Borrador'
+  const ajena = actual !== null && !esPropia(actual)
+  const editable =
+    actual !== null && actual.estado === 'Borrador' && puedeEditar(actual)
   const clienteActual = cliente(actual?.clienteId ?? null)
   const totales = useMemo(
     () => (actual === null ? null : calcularTotales(actual)),
@@ -378,7 +387,7 @@ export default function CotizacionPage() {
     )
   }
 
-  const anteriores = datos.cotizaciones
+  const anteriores = cotizacionesVisibles
     .filter(
       (c) => c.clienteId === actual.clienteId && c.id !== actual.id && c.numero !== null,
     )
@@ -396,10 +405,24 @@ export default function CotizacionPage() {
             Autoguardado {hora(actual.actualizada)} · Vendedor: {actual.vendedor}
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link to={`/pdf/${actual.id}`}>
             <Boton tamano="sm">Vista previa PDF</Boton>
           </Link>
+          {puede('cotizaciones.exportar') && (
+            <Boton
+              tamano="sm"
+              onClick={() =>
+                exportarDetalle(
+                  `cotizacion-${actual.numero ?? 'borrador'}`,
+                  actual,
+                  clienteActual,
+                )
+              }
+            >
+              Excel
+            </Boton>
+          )}
           {editable && (
             <Boton
               tamano="sm"
@@ -412,6 +435,34 @@ export default function CotizacionPage() {
           )}
         </div>
       </div>
+
+      {ajena && (
+        <div className="mb-4">
+          <Banner tono={actual.autorizacionEdicion == null ? 'warn' : 'ok'}>
+            <span className="flex-1">
+              {actual.autorizacionEdicion == null
+                ? `Esta cotización es de ${actual.vendedor}. En modo lectura: para modificarla necesitas autorización explícita.`
+                : `Edición autorizada por ${actual.autorizacionEdicion.por} el ${fecha(actual.autorizacionEdicion.fecha)}.`}
+            </span>
+            {actual.autorizacionEdicion == null && usuario?.rol === 'Administrador' && (
+              <Boton
+                tamano="sm"
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Vas a registrar tu autorización para editar la cotización de ${actual.vendedor}. ¿Continuar?`,
+                    )
+                  ) {
+                    autorizarEdicion(actual.id)
+                  }
+                }}
+              >
+                Autorizar edición
+              </Boton>
+            )}
+          </Banner>
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[1fr_330px]">
         <div className="min-w-0">

@@ -39,16 +39,24 @@ sudo apt-get install -y nodejs
 
 ### Variables de entorno
 
-No hay ninguna obligatoria. Si más adelante conectas un backend, Vite solo expone variables con
-prefijo `VITE_`:
+Para el login real necesitas la configuración web de Firebase (ver **[FIREBASE.md](./FIREBASE.md)**
+para crear el proyecto, publicar `firestore.rules` y crear el primer administrador):
 
 ```bash
-# .env.production
-VITE_API_URL=https://api.midominio.co
+cp .env.example .env.production   # y completa los valores VITE_FIREBASE_*
 ```
 
-y se leen con `import.meta.env.VITE_API_URL`. Recuerda que ese valor queda embebido en el bundle
-(público): nunca pongas ahí secretos.
+Vite **inyecta estas variables durante el build**, no en tiempo de ejecución: si las cambias hay
+que volver a compilar (y a reconstruir la imagen Docker). Solo expone las que empiezan por
+`VITE_`, y su valor queda embebido en el bundle público: eso es normal para la config de Firebase,
+pero **nunca pongas ahí secretos** (claves privadas, tokens de servicio, contraseñas).
+
+Sin `.env` la app se despliega igual y arranca en modo demo local (usuarios en `localStorage`),
+útil para mostrarla pero **no para producción**.
+
+En Docker, `.env.production` debe existir en la carpeta del proyecto antes de `docker compose
+build`; el `Dockerfile` lo copia al contexto de build. En Vercel/Netlify se configuran como
+*Environment Variables* del proyecto y luego se redespliega.
 
 ---
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useAuth } from '../lib/auth'
 import { UNIDAD_LABEL, cop } from '../lib/format'
 import { estadoStock } from '../lib/quote'
 import { useDatos } from '../lib/store'
@@ -14,11 +15,14 @@ function FilaMaterial({
   cantidad,
   onCantidad,
   onAgregar,
+  cotizable,
 }: {
   material: Material
   cantidad: number
   onCantidad: (v: number) => void
   onAgregar: () => void
+  /** El perfil Administrador consulta precios pero no realiza ventas directas. */
+  cotizable: boolean
 }) {
   const estado = estadoStock(material)
   const sinStock = estado === 'Sin stock'
@@ -42,18 +46,20 @@ function FilaMaterial({
           <div className="text-[11px] text-muted">por {UNIDAD_LABEL[material.unidad]}</div>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-2">
-        <Stepper valor={cantidad} onCambio={onCantidad} deshabilitado={sinStock} />
-        <Boton
-          variante={sinStock ? 'secundario' : 'primario'}
-          className="flex-1"
-          disabled={sinStock || cantidad <= 0}
-          onClick={onAgregar}
-        >
-          {sinStock ? 'Sin stock' : 'Agregar'}
-        </Boton>
-      </div>
-      {!sinStock && cantidad > material.stock && (
+      {cotizable && (
+        <div className="mt-3 flex items-center gap-2">
+          <Stepper valor={cantidad} onCambio={onCantidad} deshabilitado={sinStock} />
+          <Boton
+            variante={sinStock ? 'secundario' : 'primario'}
+            className="flex-1"
+            disabled={sinStock || cantidad <= 0}
+            onClick={onAgregar}
+          >
+            {sinStock ? 'Sin stock' : 'Agregar'}
+          </Boton>
+        </div>
+      )}
+      {cotizable && !sinStock && cantidad > material.stock && (
         <p className="mt-2 text-xs font-semibold text-warn">
           ▲ Estás cotizando {cantidad} y solo hay {material.stock} en inventario.
         </p>
@@ -64,6 +70,8 @@ function FilaMaterial({
 
 export default function Buscar() {
   const { materialesActivos, agregarMaterial, borrador } = useDatos()
+  const { puede } = useAuth()
+  const cotizable = puede('cotizaciones.crear')
   const [texto, setTexto] = useState('')
   const [categoria, setCategoria] = useState('Todas')
   const [orden, setOrden] = useState<Orden>('nombre')
@@ -99,7 +107,9 @@ export default function Buscar() {
         <div>
           <h1 className="text-[22px] font-extrabold text-navy">Buscar materiales</h1>
           <p className="mt-0.5 text-sm text-muted">
-            Consulta el inventario, agrega cantidades y armá la cotización.
+            {cotizable
+              ? 'Consulta el inventario, agrega cantidades y armá la cotización.'
+              : 'Consulta precios y existencias. Tu perfil no realiza ventas directas.'}
           </p>
         </div>
         {borrador !== null && borrador.items.length > 0 && (
@@ -154,6 +164,7 @@ export default function Buscar() {
               material={m}
               cantidad={cantidadDe(m.id)}
               onCantidad={(v) => setCantidades((prev) => ({ ...prev, [m.id]: v }))}
+              cotizable={cotizable}
               onAgregar={() => {
                 agregarMaterial(m.id, cantidadDe(m.id))
                 setCantidades((prev) => ({ ...prev, [m.id]: 0 }))

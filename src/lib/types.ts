@@ -24,6 +24,8 @@ export type Cliente = {
   email?: string
   obra?: string
   creado: string
+  /** Vendedor que registró el cliente: delimita el historial que ve cada vendedor. */
+  creadoPor?: string | null
 }
 
 export type EstadoCotizacion = 'Borrador' | 'Enviada' | 'Aceptada' | 'Rechazada' | 'Vencida'
@@ -51,6 +53,10 @@ export type Cotizacion = {
   notas: string
   estado: EstadoCotizacion
   vendedor: string
+  /** uid del vendedor dueño de la cotización. */
+  vendedorUid?: string | null
+  /** Autorización explícita registrada por el administrador para editar una cotización ajena. */
+  autorizacionEdicion?: { por: string; uid: string; fecha: string } | null
   creada: string
   emitida: string | null
   actualizada: string
@@ -58,6 +64,8 @@ export type Cotizacion = {
 
 export type Empresa = {
   nombre: string
+  /** Ruta o URL del logo que encabeza el PDF. */
+  logoUrl: string
   nit: string
   direccion: string
   telefono: string
