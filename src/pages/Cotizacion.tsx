@@ -350,7 +350,7 @@ export default function CotizacionPage() {
 
   // Al emitir, el borrador deja de serlo: la ruta pasa a apuntar a la cotización.
   const generar = (cotizacionId: string) => {
-    setCompartir(generarCotizacion(cotizacionId))
+    void generarCotizacion(cotizacionId).then(setCompartir)
     if (id === undefined) navigate(`/cotizacion/${cotizacionId}`, { replace: true })
   }
 

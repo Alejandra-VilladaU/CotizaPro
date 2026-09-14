@@ -20,6 +20,16 @@ service cloud.firestore {
         && perfil().activo == true;
     }
 
+    function activo() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && perfil().activo == true;
+    }
+
+    function tienePermiso(permiso) {
+      return esAdmin() || (activo() && perfil().permisos.hasAny([permiso]));
+    }
+
     match /usuarios/{uid} {
       // Cada usuario lee su propio perfil; el administrador lee todos.
       allow get: if autenticado() && (request.auth.uid == uid || esAdmin());
@@ -41,6 +51,57 @@ service cloud.firestore {
         );
 
       allow delete: if esAdmin();
+    }
+
+    // Inventario compartido: todo el equipo lo consulta, solo el administrador lo modifica.
+    match /materiales/{materialId} {
+      allow read: if activo();
+      allow create, update, delete: if esAdmin();
+    }
+
+    // Clientes: los lee todo el equipo (una cotización necesita los datos de su cliente),
+    // el vendedor solo puede crear/editar los suyos y nunca eliminarlos.
+    match /clientes/{clienteId} {
+      allow read: if activo();
+      allow create: if esAdmin()
+        || (tienePermiso('clientes.crear')
+            && request.resource.data.creadoPor == request.auth.uid);
+      allow update: if esAdmin()
+        || (tienePermiso('clientes.crear')
+            && resource.data.creadoPor == request.auth.uid
+            && request.resource.data.creadoPor == resource.data.creadoPor);
+      allow delete: if esAdmin();
+    }
+
+    // Cotizaciones: el vendedor solo ve y edita las propias; las consultas de la app
+    // filtran por vendedorUid para cumplir estas reglas.
+    match /cotizaciones/{cotizacionId} {
+      allow read: if esAdmin()
+        || (activo() && resource.data.vendedorUid == request.auth.uid);
+      allow create: if esAdmin()
+        || (tienePermiso('cotizaciones.crear')
+            && request.resource.data.vendedorUid == request.auth.uid);
+      allow update: if esAdmin()
+        || (activo()
+            && resource.data.vendedorUid == request.auth.uid
+            && request.resource.data.vendedorUid == resource.data.vendedorUid);
+      allow delete: if esAdmin()
+        || (activo() && resource.data.vendedorUid == request.auth.uid);
+    }
+
+    // consecutivos/cotizaciones: contador compartido del número de cotización. Cualquier
+    // vendedor activo lo incrementa dentro de una transacción, pero nunca lo retrocede.
+    match /consecutivos/{documento} {
+      allow read: if activo();
+      allow create: if activo();
+      allow update: if activo() && request.resource.data.ultimo > resource.data.ultimo;
+      allow delete: if esAdmin();
+    }
+
+    // config/empresa: datos de la empresa (logo, NIT, IVA); solo el administrador los edita.
+    match /config/{documento} {
+      allow read: if activo();
+      allow create, update, delete: if esAdmin();
     }
   }
 }

@@ -7,6 +7,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Sparkles,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -36,6 +37,13 @@ const ENTRADAS: Entrada[] = [
     corto: 'Cotización',
     icono: ShoppingCart,
     permiso: 'cotizaciones.crear',
+  },
+  {
+    to: '/asesor',
+    label: 'Asesor de proyectos',
+    corto: 'Asesor',
+    icono: Sparkles,
+    permiso: 'asesor.ia',
   },
   { to: '/cotizaciones', label: 'Cotizaciones', corto: 'Historial', icono: FileText },
   { to: '/clientes', label: 'Clientes', corto: 'Clientes', icono: Users },
@@ -225,6 +233,24 @@ function BarraCarrito() {
   )
 }
 
+/** Estado de la sincronización con Firestore. */
+function EstadoNube() {
+  const { enLaNube, cargando, errorNube } = useDatos()
+  if (!enLaNube) return null
+  if (errorNube !== null)
+    return (
+      <div className="border-b border-danger/25 bg-danger-soft px-4 py-2 text-sm font-semibold text-danger">
+        {errorNube}
+      </div>
+    )
+  if (!cargando) return null
+  return (
+    <div className="border-b border-line bg-white px-4 py-2 text-sm text-muted">
+      Cargando datos desde Firebase…
+    </div>
+  )
+}
+
 export default function Layout() {
   return (
     <div className="flex min-h-full">
@@ -234,6 +260,7 @@ export default function Layout() {
           <Logo alto={22} />
           <Sesion compacta />
         </header>
+        <EstadoNube />
         <main className="min-w-0 flex-1 pb-32 lg:pb-0">
           <Outlet />
         </main>
