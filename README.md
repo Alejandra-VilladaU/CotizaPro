@@ -12,8 +12,11 @@ cliente.
   el equipo y sincronizados en tiempo real (colecciones documentadas en
   [FIRESTORE.md](FIRESTORE.md)). Sin `.env` el modo demo los guarda en `localStorage`
   (clave `cotizapro.v1`) con catálogo de 30 materiales, 5 clientes y 8 cotizaciones.
+- **Asesor con IA:** chat que diseña proyectos (mesas, muebles de cocina, closets), acepta fotos,
+  planos y dibujos, y propone materiales del inventario para pasarlos a la cotización. Usa Google
+  Gemini con su capa gratuita (ver [ASESOR_IA.md](ASESOR_IA.md)).
 - **Despliegue:** sitio estático; el único servicio externo es Firebase (Authentication +
-  Firestore).
+  Firestore). Publicación desde GitHub en [PUBLICAR.md](PUBLICAR.md).
 
 ## Pantallas
 
@@ -28,6 +31,7 @@ cliente.
 | `/inventario` | Administrar materiales: crear, editar, eliminar, importar CSV, alertas de stock. *(solo Administrador)* |
 | `/reportes` | Reportes globales: ventas, conversión, ticket promedio, ventas por vendedor y por mes, top clientes. *(solo Administrador)* |
 | `/usuarios` | Crear vendedores con clave temporal, activar/desactivar, eliminar y configurar permisos. *(solo Administrador)* |
+| `/asesor` | Asesor de proyectos con IA: chat con imágenes y materiales sugeridos del inventario. *(permiso `asesor.ia`)* |
 | `/ajustes` | Datos de la empresa para el PDF (logo, NIT, dirección), IVA y vigencia por defecto. *(edición solo Administrador)* |
 | `/login` | Ingreso y recuperación de contraseña. |
 | `/cambiar-password` | Cambio obligatorio de contraseña en el primer ingreso. |
@@ -95,6 +99,9 @@ en [FIRESTORE.md](./FIRESTORE.md); el catálogo inicial se carga desde **Ajustes
 de los datos**.
 
 ## Despliegue
+
+Para publicar desde GitHub con HTTPS y dominio gratis (Firebase Hosting o Vercel, con deploy
+automático en cada push), ver **[PUBLICAR.md](./PUBLICAR.md)**.
 
 Ver **[DESPLIEGUE.md](./DESPLIEGUE.md)** — Docker + Nginx, VPS con dominio y HTTPS,
 Vercel/Netlify, subcarpeta, actualización y respaldo de datos.
