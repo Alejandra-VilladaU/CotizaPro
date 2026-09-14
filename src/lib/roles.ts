@@ -10,6 +10,7 @@ export type Permiso =
   | 'usuarios.gestionar'
   | 'empresa.editar'
   | 'reportes.globales'
+  | 'asesor.ia'
 
 export const PERMISO_LABEL: Record<Permiso, string> = {
   'materiales.buscar': 'Buscar materiales en el inventario',
@@ -21,6 +22,7 @@ export const PERMISO_LABEL: Record<Permiso, string> = {
   'usuarios.gestionar': 'Crear vendedores y configurar sus permisos',
   'empresa.editar': 'Editar información de la empresa',
   'reportes.globales': 'Consultar reportes globales de ventas',
+  'asesor.ia': 'Usar el asesor de proyectos con IA',
 }
 
 /** El administrador gestiona; no vende ni edita cotizaciones de vendedores sin autorización. */
@@ -32,6 +34,7 @@ const PERMISOS_ADMIN: Permiso[] = [
   'usuarios.gestionar',
   'empresa.editar',
   'reportes.globales',
+  'asesor.ia',
 ]
 
 /** El vendedor opera el día a día: solo ve y toca sus propios registros. */
@@ -40,6 +43,7 @@ const PERMISOS_VENDEDOR: Permiso[] = [
   'clientes.crear',
   'cotizaciones.crear',
   'cotizaciones.exportar',
+  'asesor.ia',
 ]
 
 /** Permisos que el administrador puede activar o desactivar por vendedor. */
@@ -48,6 +52,7 @@ export const PERMISOS_CONFIGURABLES: Permiso[] = [
   'clientes.crear',
   'cotizaciones.crear',
   'cotizaciones.exportar',
+  'asesor.ia',
 ]
 
 export const permisosPorDefecto = (rol: Rol): Permiso[] =>

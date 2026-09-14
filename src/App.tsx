@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { RequierePassword, RequierePermiso, RequiereSesion, SoloInvitados } from './components/Guards'
 import Layout from './components/Layout'
 import Ajustes from './pages/Ajustes'
+import Asesor from './pages/Asesor'
 import Buscar from './pages/Buscar'
 import CambiarPassword from './pages/CambiarPassword'
 import ClienteDetalle from './pages/ClienteDetalle'
@@ -31,6 +32,9 @@ export default function App() {
             <Route path="/cotizacion" element={<Cotizacion />} />
           </Route>
           <Route path="/cotizacion/:id" element={<Cotizacion />} />
+          <Route element={<RequierePermiso permiso="asesor.ia" />}>
+            <Route path="/asesor" element={<Asesor />} />
+          </Route>
           <Route path="/cotizaciones" element={<Cotizaciones />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/clientes/:id" element={<ClienteDetalle />} />

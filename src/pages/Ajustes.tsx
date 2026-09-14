@@ -1,7 +1,76 @@
 import { useEffect, useState } from 'react'
 import { Badge, Boton, Campo, Card, Etiqueta } from '../components/ui'
 import { useAuth } from '../lib/auth'
+import { MODELO_POR_DEFECTO, guardarConfigIA, leerConfigIA, type ConfigIA } from '../lib/ia'
 import { useDatos } from '../lib/store'
+
+/** La clave de Gemini vive en `config/ia`: el administrador la cambia sin recompilar. */
+function AsesorIA({ editable }: { editable: boolean }) {
+  const [config, setConfig] = useState<ConfigIA>({ apiKey: '', modelo: MODELO_POR_DEFECTO })
+  const [guardado, setGuardado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void leerConfigIA().then(setConfig)
+  }, [])
+
+  return (
+    <Card className="mb-4 p-5">
+      <Etiqueta className="mb-2">Asesor con IA</Etiqueta>
+      <p className="text-sm text-muted">
+        El asesor de proyectos usa Google Gemini, que tiene una capa gratuita. Crea una clave en{' '}
+        <a
+          href="https://aistudio.google.com/app/apikey"
+          target="_blank"
+          rel="noreferrer"
+          className="font-bold text-blue underline"
+        >
+          Google AI Studio
+        </a>{' '}
+        y pégala aquí; queda guardada en <b>config/ia</b> y la usa todo el equipo.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Campo
+          etiqueta="Clave de Gemini"
+          type="password"
+          placeholder="AIza…"
+          disabled={!editable}
+          value={config.apiKey}
+          onChange={(e) => setConfig({ ...config, apiKey: e.target.value.trim() })}
+        />
+        <Campo
+          etiqueta="Modelo"
+          disabled={!editable}
+          value={config.modelo}
+          onChange={(e) => setConfig({ ...config, modelo: e.target.value.trim() })}
+        />
+      </div>
+      {editable && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Boton
+            onClick={() => {
+              setError(null)
+              void guardarConfigIA(config)
+                .then(() => {
+                  setGuardado(true)
+                  setTimeout(() => setGuardado(false), 2500)
+                })
+                .catch(() => setError('No fue posible guardar la clave en Firebase.'))
+            }}
+          >
+            Guardar clave del asesor
+          </Boton>
+          {guardado && <span className="text-sm font-bold text-ok">✓ Clave guardada</span>}
+          {error !== null && <span className="text-sm font-bold text-danger">{error}</span>}
+        </div>
+      )}
+      <p className="mt-3 text-xs text-muted">
+        La clave viaja al navegador de cada usuario: restríngela en Google Cloud a la API
+        “Generative Language” y al dominio donde publiques la app.
+      </p>
+    </Card>
+  )
+}
 
 export default function Ajustes() {
   const {
@@ -98,6 +167,8 @@ export default function Ajustes() {
           </div>
         )}
       </Card>
+
+      {enLaNube && <AsesorIA editable={editable} />}
 
       <Card className="p-5">
         <Etiqueta className="mb-3">Datos de la empresa</Etiqueta>

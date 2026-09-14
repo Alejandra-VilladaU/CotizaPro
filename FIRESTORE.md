@@ -160,6 +160,21 @@ Documento único con los datos que encabezan el PDF y los valores por defecto de
 `nombre`, `logoUrl`, `nit`, `direccion`, `telefono`, `email`, `vendedor`, `ivaPct`,
 `vigenciaDias`, `condiciones`, `notas`.
 
+## `config/ia`
+
+Configuración del asesor de proyectos con IA. La escribe el administrador desde
+**Ajustes → Asesor con IA** y la leen todos los perfiles activos:
+
+| Campo | Tipo | Descripción |
+| --- | --- | --- |
+| `apiKey` | string | clave de Google Gemini (capa gratuita) |
+| `modelo` | string | modelo usado, por defecto `gemini-2.5-flash` |
+| `actualizado` | string ISO | última vez que se guardó |
+
+Al ser una app sin backend, la clave llega al navegador de cada usuario del equipo: restríngela en
+Google Cloud a la *Generative Language API* y al dominio de la app (ver `ASESOR_IA.md`). Si se
+requiere que no salga del servidor, hay que moverla detrás de una Cloud Function.
+
 ## `consecutivos/cotizaciones`
 
 Contador compartido del número de cotización:
@@ -192,7 +207,7 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 | `materiales` | leer y escribir | solo leer |
 | `clientes` | leer, crear, editar y eliminar | leer; crear y editar los propios (`creadoPor` = su uid); no eliminar |
 | `cotizaciones` | leer todas, editar y eliminar | solo las propias (`vendedorUid` = su uid) |
-| `config/empresa` | leer y escribir | solo leer |
+| `config/empresa` y `config/ia` | leer y escribir | solo leer |
 | `consecutivos/cotizaciones` | leer, subir y borrar | leer y subir el contador |
 | `usuarios` | leer y administrar todos | solo su perfil; únicamente puede tocar `debeCambiarPassword` y `ultimoIngreso` |
 

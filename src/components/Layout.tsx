@@ -7,6 +7,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Sparkles,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -36,6 +37,13 @@ const ENTRADAS: Entrada[] = [
     corto: 'Cotización',
     icono: ShoppingCart,
     permiso: 'cotizaciones.crear',
+  },
+  {
+    to: '/asesor',
+    label: 'Asesor de proyectos',
+    corto: 'Asesor',
+    icono: Sparkles,
+    permiso: 'asesor.ia',
   },
   { to: '/cotizaciones', label: 'Cotizaciones', corto: 'Historial', icono: FileText },
   { to: '/clientes', label: 'Clientes', corto: 'Clientes', icono: Users },
