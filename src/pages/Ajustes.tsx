@@ -1,14 +1,97 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Badge, Boton, Campo, Card, Etiqueta } from '../components/ui'
 import { useAuth } from '../lib/auth'
+import { MODELO_POR_DEFECTO, guardarConfigIA, leerConfigIA, type ConfigIA } from '../lib/ia'
 import { useDatos } from '../lib/store'
 
+/** La clave de Gemini vive en `config/ia`: el administrador la cambia sin recompilar. */
+function AsesorIA({ editable }: { editable: boolean }) {
+  const [config, setConfig] = useState<ConfigIA>({ apiKey: '', modelo: MODELO_POR_DEFECTO })
+  const [guardado, setGuardado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void leerConfigIA().then(setConfig)
+  }, [])
+
+  return (
+    <Card className="mb-4 p-5">
+      <Etiqueta className="mb-2">Asesor con IA</Etiqueta>
+      <p className="text-sm text-muted">
+        El asesor de proyectos usa Google Gemini, que tiene una capa gratuita. Crea una clave en{' '}
+        <a
+          href="https://aistudio.google.com/app/apikey"
+          target="_blank"
+          rel="noreferrer"
+          className="font-bold text-blue underline"
+        >
+          Google AI Studio
+        </a>{' '}
+        y pégala aquí; queda guardada en <b>config/ia</b> y la usa todo el equipo.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Campo
+          etiqueta="Clave de Gemini"
+          type="password"
+          placeholder="AIza…"
+          disabled={!editable}
+          value={config.apiKey}
+          onChange={(e) => setConfig({ ...config, apiKey: e.target.value.trim() })}
+        />
+        <Campo
+          etiqueta="Modelo"
+          disabled={!editable}
+          value={config.modelo}
+          onChange={(e) => setConfig({ ...config, modelo: e.target.value.trim() })}
+        />
+      </div>
+      {editable && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Boton
+            onClick={() => {
+              setError(null)
+              void guardarConfigIA(config)
+                .then(() => {
+                  setGuardado(true)
+                  setTimeout(() => setGuardado(false), 2500)
+                })
+                .catch(() => setError('No fue posible guardar la clave en Firebase.'))
+            }}
+          >
+            Guardar clave del asesor
+          </Boton>
+          {guardado && <span className="text-sm font-bold text-ok">✓ Clave guardada</span>}
+          {error !== null && <span className="text-sm font-bold text-danger">{error}</span>}
+        </div>
+      )}
+      <p className="mt-3 text-xs text-muted">
+        La clave viaja al navegador de cada usuario: restríngela en Google Cloud a la API
+        “Generative Language” y al dominio donde publiques la app.
+      </p>
+    </Card>
+  )
+}
+
 export default function Ajustes() {
-  const { datos, guardarEmpresa, restablecerDemo } = useDatos()
+  const {
+    datos,
+    guardarEmpresa,
+    restablecerDemo,
+    enLaNube,
+    errorNube,
+    sembrarDemo,
+    subirDatosLocales,
+  } = useDatos()
   const { usuario, puede, modoDemo } = useAuth()
   const editable = puede('empresa.editar')
   const [empresa, setEmpresa] = useState(datos.empresa)
   const [guardado, setGuardado] = useState(false)
+  const [migracion, setMigracion] = useState<string | null>(null)
+
+  // Los datos de la empresa llegan desde Firestore después del primer render.
+  useEffect(() => {
+    setEmpresa(datos.empresa)
+  }, [datos.empresa])
 
   const campo = (clave: keyof typeof empresa, etiqueta: string, placeholder?: string) => (
     <Campo
@@ -39,6 +122,53 @@ export default function Ajustes() {
           {modoDemo && <Badge tono="warn">Modo demo sin Firebase</Badge>}
         </div>
       </Card>
+
+      <Card className="mb-4 p-5">
+        <Etiqueta className="mb-2">Almacenamiento de los datos</Etiqueta>
+        {enLaNube ? (
+          <p className="text-sm text-muted">
+            Inventario, clientes y cotizaciones se guardan en Firebase (Firestore), en las
+            colecciones <b>materiales</b>, <b>clientes</b>, <b>cotizaciones</b> y{' '}
+            <b>config/empresa</b>. Todo el equipo ve el mismo inventario y cada vendedor solo sus
+            cotizaciones.
+          </p>
+        ) : (
+          <p className="text-sm text-muted">
+            Sin credenciales de Firebase la app funciona en modo demo y guarda los datos solo en el
+            almacenamiento local de este navegador.
+          </p>
+        )}
+        {errorNube !== null && (
+          <p className="mt-2 text-sm font-bold text-danger">{errorNube}</p>
+        )}
+        {enLaNube && editable && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Boton
+              onClick={() => {
+                void sembrarDemo().then(() => setMigracion('Catálogo de ejemplo cargado en Firebase.'))
+              }}
+            >
+              Cargar catálogo de ejemplo
+            </Boton>
+            <Boton
+              onClick={() => {
+                void subirDatosLocales().then((r) =>
+                  setMigracion(
+                    `Subidos a Firebase: ${r.materiales} materiales, ${r.clientes} clientes y ${r.cotizaciones} cotizaciones.`,
+                  ),
+                )
+              }}
+            >
+              Subir datos de este navegador
+            </Boton>
+            {migracion !== null && (
+              <span className="text-sm font-bold text-ok">✓ {migracion}</span>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {enLaNube && <AsesorIA editable={editable} />}
 
       <Card className="p-5">
         <Etiqueta className="mb-3">Datos de la empresa</Etiqueta>
@@ -113,8 +243,9 @@ export default function Ajustes() {
       <Card className="mt-4 p-5">
         <Etiqueta className="mb-2">Datos de demostración</Etiqueta>
         <p className="text-sm text-muted">
-          CotizaPro guarda inventario, clientes y cotizaciones en el almacenamiento local de este
-          navegador. Restablecer borra tus cambios y vuelve a cargar el catálogo de ejemplo.
+          Restablecer borra inventario, clientes y cotizaciones
+          {enLaNube ? ' de Firebase' : ' de este navegador'} y vuelve a cargar el catálogo de
+          ejemplo.
         </p>
         <Boton
           variante="peligro"

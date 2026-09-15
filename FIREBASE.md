@@ -138,13 +138,14 @@ La "autorización explícita" queda registrada en la cotización con el nombre, 
 fecha de quien la otorgó; sin ella el administrador ve las cotizaciones ajenas en modo
 lectura.
 
-## 7. Limitación importante
+## 7. Datos de negocio
 
-El login, los roles y los permisos son remotos, pero **el inventario, los clientes y las
-cotizaciones siguen guardándose en el navegador** (`localStorage`). Por eso cada dispositivo
-mantiene sus propios datos de negocio. Para que un equipo comparta inventario e historial
-hace falta mover esas colecciones a Firestore; es el siguiente paso natural y la estructura
-de datos (`vendedorUid`, `creadoPor`, `autorizacionEdicion`) ya está preparada para ello.
+El inventario, los clientes y las cotizaciones también viven en Firestore (colecciones
+`materiales`, `clientes`, `cotizaciones` y el documento `config/empresa`), así que todo el
+equipo comparte el mismo catálogo y el historial se conserva por cliente y por vendedor.
+Los campos, las relaciones y los permisos de cada colección están en
+[FIRESTORE.md](./FIRESTORE.md). El catálogo inicial se carga desde **Ajustes → Almacenamiento
+de los datos**.
 
 ## 8. Modo demo (sin Firebase)
 
