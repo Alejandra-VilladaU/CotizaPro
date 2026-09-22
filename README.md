@@ -60,9 +60,9 @@ total       = base + iva
 Encabezado opcional; separador `,` o `;`:
 
 ```csv
-codigo,nombre,categoria,unidad,precio,stock,stock_minimo
-COD-1023,Cemento Gris Uso General 50 kg,Cemento,bulto,32400,240,40
-COD-2210,Varilla corrugada 1/2" x 6 m,Acero,unidad,28900,8,20
+codigo,nombre,categoria,unidad,precio,stock,stock_minimo,descripcion
+COD-1023,Cemento Gris Uso General 50 kg,Cemento,bulto,32400,240,40,Cemento gris de fraguado normal para obra gris
+COD-2210,Varilla corrugada 1/2" x 6 m,Acero,unidad,28900,8,20,Varilla figurable grado 60
 ```
 
 Unidades válidas: `unidad`, `bulto`, `m2`, `m3`, `kg`, `ml`. Si el código ya existe, se actualiza el

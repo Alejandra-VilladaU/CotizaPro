@@ -48,6 +48,7 @@ Inventario compartido. Es la única fuente de precios vigentes.
 | `codigo` | string | sí | código interno; la importación CSV lo usa para no duplicar |
 | `nombre` | string | sí | |
 | `categoria` | string | sí | `Sin categoría` si el CSV no la trae |
+| `descripcion` | string | no | detalle del material; sale en el PDF y en el reporte de materiales |
 | `unidad` | string | sí | `unidad` \| `bulto` \| `m2` \| `m3` \| `kg` \| `ml` |
 | `precio` | number | sí | COP sin decimales |
 | `stock` | number | sí | |
@@ -63,6 +64,7 @@ Ejemplo:
   "codigo": "CEM-50",
   "nombre": "Cemento gris 50 kg",
   "categoria": "Cementos",
+  "descripcion": "Cemento gris de uso general, fraguado normal",
   "unidad": "bulto",
   "precio": 32500,
   "stock": 180,
@@ -104,6 +106,7 @@ suyas; el administrador ve todos.
 | `estado` | string | sí | `Borrador` \| `Enviada` \| `Aceptada` \| `Rechazada` \| `Vencida` |
 | `vendedor` | string | sí | nombre mostrado en el PDF |
 | `vendedorUid` | string \| null | sí | `uid` dueño de la cotización; las reglas y las consultas se basan en él |
+| `pago` | objeto \| null | no | soporte del cobro cuando la cotización pasa a `Aceptada`: `{ fecha, metodo, monto, referencia, notas, registradoPor }`. Una cotización aceptada cuenta como pagada |
 | `autorizacionEdicion` | objeto \| null | sí | `{ por, uid, fecha }` que registra la autorización del administrador para editar una cotización ajena |
 | `creada` | string ISO | sí | |
 | `emitida` | string ISO \| null | sí | fecha de generación; `null` en borradores |
@@ -168,7 +171,7 @@ Configuración del asesor de proyectos con IA. La escribe el administrador desde
 | Campo | Tipo | Descripción |
 | --- | --- | --- |
 | `apiKey` | string | clave de Google Gemini (capa gratuita) |
-| `modelo` | string | modelo usado, por defecto `gemini-2.5-flash` |
+| `modelo` | string | modelo usado, por defecto `gemini-3.6-flash` |
 | `actualizado` | string ISO | última vez que se guardó |
 
 Al ser una app sin backend, la clave llega al navegador de cada usuario del equipo: restríngela en

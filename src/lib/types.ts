@@ -5,6 +5,8 @@ export type Material = {
   codigo: string
   nombre: string
   categoria: string
+  /** Detalle que acompaña al material en el PDF y en los reportes. */
+  descripcion?: string
   unidad: Unidad
   precio: number
   stock: number
@@ -42,6 +44,18 @@ export type ItemCotizacion = {
   descuento: number
 }
 
+export type MetodoPago = 'Efectivo' | 'Transferencia' | 'Tarjeta' | 'Crédito' | 'Otro'
+
+/** Una cotización aceptada cuenta como pagada: aquí queda el soporte del pago. */
+export type Pago = {
+  fecha: string
+  metodo: MetodoPago
+  monto: number
+  referencia: string
+  notas: string
+  registradoPor: string
+}
+
 export type Cotizacion = {
   id: string
   numero: number | null
@@ -57,6 +71,7 @@ export type Cotizacion = {
   vendedorUid?: string | null
   /** Autorización explícita registrada por el administrador para editar una cotización ajena. */
   autorizacionEdicion?: { por: string; uid: string; fecha: string } | null
+  pago?: Pago | null
   creada: string
   emitida: string | null
   actualizada: string

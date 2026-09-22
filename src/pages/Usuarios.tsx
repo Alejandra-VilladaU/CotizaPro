@@ -1,4 +1,4 @@
-import { Copy, Plus, RefreshCw, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
+import { Copy, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Avatar, Badge, Banner, Boton, Campo, Card, Etiqueta, Kpi, Modal, Vacio } from '../components/ui'
 import { useAuth } from '../lib/auth'
@@ -36,6 +36,7 @@ export default function Usuarios() {
   const [aviso, setAviso] = useState<string | null>(null)
   const [alta, setAlta] = useState<Alta | null>(null)
   const [permisosDe, setPermisosDe] = useState<Usuario | null>(null)
+  const [editando, setEditando] = useState<Usuario | null>(null)
 
   const recargar = useCallback(async () => {
     setCargando(true)
@@ -191,6 +192,9 @@ export default function Usuarios() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Boton tamano="sm" onClick={() => setEditando(u)}>
+                  <Pencil size={15} /> Editar
+                </Boton>
                 {u.rol === 'Vendedor' && (
                   <Boton tamano="sm" onClick={() => setPermisosDe(u)}>
                     <ShieldCheck size={15} /> Permisos
@@ -280,6 +284,78 @@ export default function Usuarios() {
               disabled={alta.nombre.trim() === '' || alta.email.trim() === ''}
             >
               Crear usuario
+            </Boton>
+          </div>
+        </Modal>
+      )}
+
+      {editando !== null && (
+        <Modal
+          titulo={`Editar ${editando.nombre}`}
+          subtitulo="El correo se administra en Firebase Authentication y no se cambia desde aquí."
+          onCerrar={() => setEditando(null)}
+        >
+          <div className="grid gap-4">
+            <Campo
+              etiqueta="Nombre completo"
+              value={editando.nombre}
+              onChange={(e) => setEditando({ ...editando, nombre: e.target.value })}
+            />
+            <Campo etiqueta="Correo" value={editando.email} readOnly disabled />
+            <label className="block">
+              <Etiqueta className="mb-1">Perfil</Etiqueta>
+              <select
+                value={editando.rol}
+                onChange={(e) => {
+                  const rol = e.target.value as Rol
+                  setEditando({ ...editando, rol, permisos: permisosPorDefecto(rol) })
+                }}
+                disabled={editando.uid === usuario?.uid}
+                className="w-full rounded-[10px] border border-line bg-white px-3 py-2.5 text-sm text-navy outline-none focus:border-blue disabled:bg-bg"
+              >
+                <option value="Vendedor">Vendedor</option>
+                <option value="Administrador">Administrador</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-3 rounded-[10px] border border-line px-3 py-2.5 text-sm text-navy">
+              <input
+                type="checkbox"
+                checked={editando.activo}
+                disabled={editando.uid === usuario?.uid}
+                onChange={() => setEditando({ ...editando, activo: !editando.activo })}
+                className="size-4 accent-[#025cd6]"
+              />
+              Usuario activo
+            </label>
+            <label className="flex items-center gap-3 rounded-[10px] border border-line px-3 py-2.5 text-sm text-navy">
+              <input
+                type="checkbox"
+                checked={editando.debeCambiarPassword}
+                onChange={() =>
+                  setEditando({
+                    ...editando,
+                    debeCambiarPassword: !editando.debeCambiarPassword,
+                  })
+                }
+                className="size-4 accent-[#025cd6]"
+              />
+              Debe cambiar la clave en el próximo ingreso
+            </label>
+            <Boton
+              variante="primario"
+              disabled={editando.nombre.trim() === ''}
+              onClick={() => {
+                void cambiar(editando.uid, {
+                  nombre: editando.nombre.trim(),
+                  rol: editando.rol,
+                  activo: editando.activo,
+                  permisos: editando.permisos,
+                  debeCambiarPassword: editando.debeCambiarPassword,
+                })
+                setEditando(null)
+              }}
+            >
+              Guardar cambios
             </Boton>
           </div>
         </Modal>

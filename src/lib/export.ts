@@ -1,5 +1,5 @@
 import { calcularTotales } from './quote'
-import type { Cliente, Cotizacion } from './types'
+import type { Cliente, Cotizacion, Material } from './types'
 
 const celda = (valor: string | number): string => {
   const texto = String(valor)
@@ -65,11 +65,65 @@ export function exportarCotizaciones(
   descargarCsv(nombre, filas)
 }
 
+const ENCABEZADO_MATERIALES = [
+  'Numero',
+  'Estado',
+  'Cliente',
+  'Vendedor',
+  'Emitida',
+  'Codigo',
+  'Material',
+  'Descripcion',
+  'Unidad',
+  'Cantidad',
+  'Precio unitario',
+  'Descuento %',
+  'Total linea',
+]
+
+/**
+ * Reporte de materiales cotizados: una fila por línea, con la descripción que tiene
+ * el material en el inventario.
+ */
+export function exportarMaterialesCotizados(
+  nombre: string,
+  cotizaciones: Cotizacion[],
+  clientes: Cliente[],
+  materiales: Material[],
+): void {
+  const nombreCliente = (id: string | null): string =>
+    clientes.find((c) => c.id === id)?.nombre ?? 'Sin cliente'
+  const descripcion = (materialId: string, codigo: string): string =>
+    materiales.find((m) => m.id === materialId || m.codigo === codigo)?.descripcion ?? ''
+  const filas: (string | number)[][] = [ENCABEZADO_MATERIALES]
+  cotizaciones.forEach((c) => {
+    c.items.forEach((i) => {
+      filas.push([
+        c.numero ?? 'Borrador',
+        c.estado,
+        nombreCliente(c.clienteId),
+        c.vendedor,
+        c.emitida?.slice(0, 10) ?? '',
+        i.codigo,
+        i.nombre,
+        descripcion(i.materialId, i.codigo),
+        i.unidad,
+        i.cantidad,
+        i.precioUnitario,
+        i.descuento,
+        Math.round(i.cantidad * i.precioUnitario * (1 - i.descuento / 100)),
+      ])
+    })
+  })
+  descargarCsv(nombre, filas)
+}
+
 /** Detalle línea a línea: una fila por material cotizado. */
 export function exportarDetalle(
   nombre: string,
   cotizacion: Cotizacion,
   cliente: Cliente | undefined,
+  materiales: Material[] = [],
 ): void {
   const filas: (string | number)[][] = [
     ['Cotizacion', cotizacion.numero ?? 'Borrador'],
@@ -77,12 +131,22 @@ export function exportarDetalle(
     ['Vendedor', cotizacion.vendedor],
     ['Estado', cotizacion.estado],
     [],
-    ['Codigo', 'Material', 'Unidad', 'Cantidad', 'Precio unitario', 'Descuento %', 'Total linea'],
+    [
+      'Codigo',
+      'Material',
+      'Descripcion',
+      'Unidad',
+      'Cantidad',
+      'Precio unitario',
+      'Descuento %',
+      'Total linea',
+    ],
   ]
   cotizacion.items.forEach((i) => {
     filas.push([
       i.codigo,
       i.nombre,
+      materiales.find((m) => m.id === i.materialId || m.codigo === i.codigo)?.descripcion ?? '',
       i.unidad,
       i.cantidad,
       i.precioUnitario,
@@ -93,6 +157,16 @@ export function exportarDetalle(
   const t = calcularTotales(cotizacion)
   filas.push(
     [],
+    ...(cotizacion.pago === undefined || cotizacion.pago === null
+      ? []
+      : [
+          ['Pago recibido', cotizacion.pago.fecha.slice(0, 10)],
+          ['Metodo de pago', cotizacion.pago.metodo],
+          ['Referencia', cotizacion.pago.referencia],
+          ['Monto pagado', cotizacion.pago.monto],
+          ['Registrado por', cotizacion.pago.registradoPor],
+          [],
+        ]),
     ['Subtotal', t.subtotal],
     ['Descuento global', t.descuentoGlobal],
     ['Base gravable', t.base],

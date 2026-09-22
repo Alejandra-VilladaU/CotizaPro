@@ -1,5 +1,6 @@
 import { ArrowLeft, Printer } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Boton, Vacio } from '../components/ui'
 import { UNIDAD_LABEL, cop, fecha } from '../lib/format'
 import { calcularTotales, totalLinea, vence } from '../lib/quote'
@@ -7,8 +8,18 @@ import { useDatos } from '../lib/store'
 
 export default function Pdf() {
   const { id } = useParams()
-  const { cotizacion, cliente, datos } = useDatos()
+  const { cotizacion, cliente, datos, material } = useDatos()
+  const [params] = useSearchParams()
   const actual = id === undefined ? undefined : cotizacion(id)
+  const listo = actual !== undefined
+  const autoImprimir = params.get('imprimir') === '1'
+
+  // Con ?imprimir=1 se abre directamente el diálogo de imprimir / guardar como PDF.
+  useEffect(() => {
+    if (!listo || !autoImprimir) return
+    const t = window.setTimeout(() => window.print(), 400)
+    return () => window.clearTimeout(t)
+  }, [listo, autoImprimir])
 
   if (actual === undefined) {
     return (
@@ -124,6 +135,12 @@ export default function Pdf() {
                     {item.codigo}
                     {item.descuento > 0 ? ` · descuento ${item.descuento} %` : ''}
                   </div>
+                  {(() => {
+                    const detalle = material(item.materialId)?.descripcion ?? ''
+                    return detalle === '' ? null : (
+                      <div className="text-[10px] leading-snug text-muted">{detalle}</div>
+                    )
+                  })()}
                 </td>
                 <td className="px-3 py-2.5 text-right text-[12px] tabular-nums">{item.cantidad}</td>
                 <td className="px-3 py-2.5 text-[11px] text-muted">{UNIDAD_LABEL[item.unidad]}</td>
@@ -166,6 +183,21 @@ export default function Pdf() {
             </div>
           </dl>
         </section>
+
+        {actual.pago != null && (
+          <section className="mt-5 rounded-[8px] bg-ok-soft p-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-ok">
+              Pago recibido
+            </div>
+            <div className="mt-1 text-[11px] leading-relaxed text-navy">
+              {cop(actual.pago.monto)} · {actual.pago.metodo} · {fecha(actual.pago.fecha)}
+              {actual.pago.referencia === '' ? '' : ` · Ref. ${actual.pago.referencia}`}
+              <br />
+              Registrado por {actual.pago.registradoPor}
+              {actual.pago.notas === '' ? '' : ` · ${actual.pago.notas}`}
+            </div>
+          </section>
+        )}
 
         <section className="mt-6">
           <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">Notas</div>

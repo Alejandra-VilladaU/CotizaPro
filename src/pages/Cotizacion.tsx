@@ -1,4 +1,4 @@
-import { Check, Copy, Download, Mail, MessageCircle, Trash2 } from 'lucide-react'
+import { Printer, Share2, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -14,9 +14,12 @@ import {
   Stepper,
   Vacio,
 } from '../components/ui'
+import Compartir from '../components/Compartir'
+import RegistrarPago from '../components/RegistrarPago'
 import { useAuth } from '../lib/auth'
 import { exportarDetalle } from '../lib/export'
 import { UNIDAD_LABEL, cop, fecha, fechaCorta, hora, iniciales } from '../lib/format'
+import type { Pago } from '../lib/types'
 import { calcularTotales, mensajeWhatsApp, preciosDesactualizados, totalLinea, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
@@ -127,99 +130,6 @@ function SelectorCliente({
   )
 }
 
-function Compartir({
-  cotizacionId,
-  numero,
-  mensaje,
-  telefono,
-  onCerrar,
-}: {
-  cotizacionId: string
-  numero: number
-  mensaje: string
-  telefono: string
-  onCerrar: () => void
-}) {
-  const [copiado, setCopiado] = useState<'enlace' | 'mensaje' | null>(null)
-  const enlace = `${window.location.origin}/pdf/${cotizacionId}`
-  const wa = `https://wa.me/${telefono.replace(/\D/g, '')}?text=${encodeURIComponent(`${mensaje} ${enlace}`)}`
-  const correo = `mailto:?subject=${encodeURIComponent(`Cotización #${numero}`)}&body=${encodeURIComponent(`${mensaje}\n\n${enlace}`)}`
-
-  const copiar = async (valor: string, cual: 'enlace' | 'mensaje') => {
-    await navigator.clipboard.writeText(valor)
-    setCopiado(cual)
-    window.setTimeout(() => setCopiado(null), 2000)
-  }
-
-  return (
-    <Modal
-      titulo={`Compartir cotización #${numero}`}
-      subtitulo="PDF de 1 página · guardada en el historial del cliente"
-      onCerrar={onCerrar}
-    >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <a
-          href={wa}
-          target="_blank"
-          rel="noreferrer"
-          className="grid place-items-center gap-2 rounded-[10px] border border-line p-3 text-center text-xs font-bold text-navy hover:bg-surface"
-        >
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-ok-soft text-ok">
-            <MessageCircle size={18} />
-          </span>
-          WhatsApp
-        </a>
-        <a
-          href={correo}
-          className="grid place-items-center gap-2 rounded-[10px] border border-line p-3 text-center text-xs font-bold text-navy hover:bg-surface"
-        >
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-soft text-blue">
-            <Mail size={18} />
-          </span>
-          Correo
-        </a>
-        <Link
-          to={`/pdf/${cotizacionId}`}
-          className="grid place-items-center gap-2 rounded-[10px] border border-line p-3 text-center text-xs font-bold text-navy hover:bg-surface"
-        >
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-danger-soft text-danger">
-            <Download size={18} />
-          </span>
-          Descargar PDF
-        </Link>
-        <button
-          type="button"
-          onClick={() => void copiar(enlace, 'enlace')}
-          className="grid place-items-center gap-2 rounded-[10px] border border-line p-3 text-center text-xs font-bold text-navy hover:bg-surface"
-        >
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-surface text-muted">
-            {copiado === 'enlace' ? <Check size={18} /> : <Copy size={18} />}
-          </span>
-          {copiado === 'enlace' ? 'Copiado' : 'Copiar enlace'}
-        </button>
-      </div>
-
-      <div className="mt-4 rounded-[10px] border border-line bg-surface p-3">
-        <Etiqueta className="mb-1">Mensaje que se enviará</Etiqueta>
-        <p className="text-sm leading-relaxed text-navy">{mensaje}</p>
-        <button
-          type="button"
-          onClick={() => void copiar(mensaje, 'mensaje')}
-          className="mt-2 text-[13px] font-bold text-blue"
-        >
-          {copiado === 'mensaje' ? 'Mensaje copiado' : 'Copiar mensaje'}
-        </button>
-      </div>
-
-      <a href={wa} target="_blank" rel="noreferrer" className="mt-4 block">
-        <Boton variante="primario" className="w-full">
-          Enviar por WhatsApp
-        </Boton>
-      </a>
-    </Modal>
-  )
-}
-
 function FilaItem({
   item,
   editable,
@@ -323,6 +233,7 @@ export default function CotizacionPage() {
     quitarItem,
     sincronizarPrecios,
     generarCotizacion,
+    registrarPago,
     agregarMaterial,
     materialesActivos,
     cotizacionesVisibles,
@@ -334,7 +245,9 @@ export default function CotizacionPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [abrirCliente, setAbrirCliente] = useState(false)
-  const [compartir, setCompartir] = useState<number | null>(null)
+  /** 'emitida' abre el modal justo después de generar y al cerrarlo vuelve al historial. */
+  const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(null)
+  const [pagoAbierto, setPagoAbierto] = useState(false)
   const [busqueda, setBusqueda] = useState('')
 
   const actual = id === undefined ? borrador : (cotizacion(id) ?? null)
@@ -350,7 +263,7 @@ export default function CotizacionPage() {
 
   // Al emitir, el borrador deja de serlo: la ruta pasa a apuntar a la cotización.
   const generar = (cotizacionId: string) => {
-    void generarCotizacion(cotizacionId).then(setCompartir)
+    void generarCotizacion(cotizacionId).then(() => setCompartir('emitida'))
     if (id === undefined) navigate(`/cotizacion/${cotizacionId}`, { replace: true })
   }
 
@@ -406,9 +319,14 @@ export default function CotizacionPage() {
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to={`/pdf/${actual.id}`}>
-            <Boton tamano="sm">Vista previa PDF</Boton>
+          <Link to={`/pdf/${actual.id}?imprimir=1`}>
+            <Boton tamano="sm">
+              <Printer size={15} /> Imprimir / Descargar PDF
+            </Boton>
           </Link>
+          <Boton tamano="sm" onClick={() => setCompartir('manual')}>
+            <Share2 size={15} /> Compartir
+          </Boton>
           {puede('cotizaciones.exportar') && (
             <Boton
               tamano="sm"
@@ -417,10 +335,16 @@ export default function CotizacionPage() {
                   `cotizacion-${actual.numero ?? 'borrador'}`,
                   actual,
                   clienteActual,
+                  datos.materiales,
                 )
               }
             >
               Excel
+            </Boton>
+          )}
+          {(actual.estado === 'Enviada' || actual.estado === 'Vencida') && (
+            <Boton tamano="sm" variante="primario" onClick={() => setPagoAbierto(true)}>
+              Aceptar y registrar pago
             </Boton>
           )}
           {editable && (
@@ -704,6 +628,20 @@ export default function CotizacionPage() {
               </span>
             </div>
 
+            {actual.pago != null && (
+              <div className="mt-4 rounded-[10px] border border-ok/35 bg-ok-soft p-3 text-sm text-navy">
+                <Etiqueta className="mb-1">Pago registrado</Etiqueta>
+                <div className="font-bold tabular-nums">{cop(actual.pago.monto)}</div>
+                <div className="text-xs text-muted">
+                  {actual.pago.metodo} · {fechaCorta(actual.pago.fecha)}
+                  {actual.pago.referencia === '' ? '' : ` · ${actual.pago.referencia}`}
+                  <br />
+                  Registrado por {actual.pago.registradoPor}
+                  {actual.pago.notas === '' ? '' : ` · ${actual.pago.notas}`}
+                </div>
+              </div>
+            )}
+
             {editable ? (
               <div className="mt-4 space-y-2">
                 <Boton
@@ -776,21 +714,36 @@ export default function CotizacionPage() {
         />
       )}
 
-      {compartir !== null && clienteActual !== undefined && (
+      {compartir !== null && (
         <Compartir
           cotizacionId={actual.id}
-          numero={compartir}
-          telefono={clienteActual.telefono}
+          numero={actual.numero}
+          telefono={clienteActual?.telefono ?? ''}
+          email={clienteActual?.email ?? ''}
           mensaje={mensajeWhatsApp(
             actual,
-            clienteActual.nombre,
+            clienteActual?.nombre ?? 'Cliente',
             totales.total,
             actual.vendedor,
             datos.empresa.nombre.replace(/ S\.A\.S\.$/, ''),
           )}
           onCerrar={() => {
+            const volver = compartir === 'emitida'
             setCompartir(null)
-            navigate('/cotizaciones')
+            if (volver) navigate('/cotizaciones')
+          }}
+        />
+      )}
+
+      {pagoAbierto && (
+        <RegistrarPago
+          numero={actual.numero}
+          total={totales.total}
+          pago={actual.pago}
+          onCerrar={() => setPagoAbierto(false)}
+          onGuardar={(pago: Omit<Pago, 'registradoPor'>) => {
+            registrarPago(actual.id, pago)
+            setPagoAbierto(false)
           }}
         />
       )}

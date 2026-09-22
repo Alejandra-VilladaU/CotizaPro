@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Download } from 'lucide-react'
+import { Download, Pencil, Share2 } from 'lucide-react'
 import { Badge, Boton, Buscador, Card, Chip, Etiqueta, Kpi, Vacio } from '../components/ui'
+import Compartir from '../components/Compartir'
+import RegistrarPago from '../components/RegistrarPago'
 import { useAuth } from '../lib/auth'
 import { exportarCotizaciones } from '../lib/export'
 import { cop, copCorto, diasRestantes, fecha, fechaCorta } from '../lib/format'
-import { calcularTotales, vence } from '../lib/quote'
+import { calcularTotales, mensajeWhatsApp, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cotizacion, EstadoCotizacion } from '../lib/types'
 
@@ -26,6 +28,27 @@ const ESTADOS: (EstadoCotizacion | 'Todos')[] = [
   'Vencida',
 ]
 
+const MESES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+]
+
+/** '2026-03' -> 'marzo 2026' */
+const etiquetaMes = (clave: string): string => {
+  const [anio, mes] = clave.split('-')
+  return `${MESES[Number(mes) - 1] ?? clave} ${anio}`
+}
+
 export default function Cotizaciones() {
   const {
     datos,
@@ -36,11 +59,17 @@ export default function Cotizaciones() {
     crearBorrador,
     cotizacionesVisibles,
     puedeEditar,
+    registrarPago,
+    abrirBorrador,
   } = useDatos()
   const { puede, verTodo } = useAuth()
   const navigate = useNavigate()
   const [texto, setTexto] = useState('')
   const [estado, setEstado] = useState<EstadoCotizacion | 'Todos'>('Todos')
+  const [mes, setMes] = useState('Todos')
+  const [vendedor, setVendedor] = useState('Todos')
+  const [pagoDe, setPagoDe] = useState<Cotizacion | null>(null)
+  const [compartirId, setCompartirId] = useState<string | null>(null)
 
   const conTotales = useMemo(
     () =>
@@ -50,12 +79,29 @@ export default function Cotizaciones() {
     [cotizacionesVisibles],
   )
 
+  const meses = useMemo(() => {
+    const claves = new Set(
+      cotizacionesVisibles.map((c) => (c.emitida ?? c.creada).slice(0, 7)),
+    )
+    return ['Todos', ...[...claves].sort((a, b) => b.localeCompare(a))]
+  }, [cotizacionesVisibles])
+
+  const vendedores = useMemo(() => {
+    const nombres = new Set(cotizacionesVisibles.map((c) => c.vendedor).filter((v) => v !== ''))
+    return ['Todos', ...[...nombres].sort((a, b) => a.localeCompare(b))]
+  }, [cotizacionesVisibles])
+
   const filtradas = conTotales.filter(({ cotizacion: c }) => {
     const nombre = cliente(c.clienteId)?.nombre ?? ''
     const q = texto.trim().toLowerCase()
     const coincide =
       q === '' || nombre.toLowerCase().includes(q) || String(c.numero ?? '').includes(q)
-    return coincide && (estado === 'Todos' || c.estado === estado)
+    return (
+      coincide &&
+      (estado === 'Todos' || c.estado === estado) &&
+      (mes === 'Todos' || (c.emitida ?? c.creada).slice(0, 7) === mes) &&
+      (vendedor === 'Todos' || c.vendedor === vendedor)
+    )
   })
 
   const suma = (filtro: (c: Cotizacion) => boolean) =>
@@ -99,8 +145,8 @@ export default function Cotizaciones() {
             <Boton
               variante="primario"
               onClick={() => {
-                crearBorrador()
-                navigate('/')
+                const nueva = crearBorrador()
+                navigate(`/cotizacion/${nueva.id}`)
               }}
             >
               + Nueva cotización
@@ -145,13 +191,54 @@ export default function Cotizaciones() {
             placeholder="Buscar por número o cliente…"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <select
+          value={estado}
+          onChange={(e) => setEstado(e.target.value as EstadoCotizacion | 'Todos')}
+          aria-label="Filtrar por estado"
+          className="rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-semibold text-navy outline-none"
+        >
           {ESTADOS.map((e) => (
-            <Chip key={e} activo={e === estado} onClick={() => setEstado(e)}>
-              {e}
-            </Chip>
+            <option key={e} value={e}>
+              {e === 'Todos' ? 'Todos los estados' : e}
+            </option>
           ))}
-        </div>
+        </select>
+        <select
+          value={mes}
+          onChange={(e) => setMes(e.target.value)}
+          aria-label="Filtrar por mes"
+          className="rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-semibold text-navy outline-none"
+        >
+          {meses.map((m) => (
+            <option key={m} value={m}>
+              {m === 'Todos' ? 'Todos los meses' : etiquetaMes(m)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={vendedor}
+          onChange={(e) => setVendedor(e.target.value)}
+          aria-label="Filtrar por vendedor"
+          className="rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-semibold text-navy outline-none"
+        >
+          {vendedores.map((v) => (
+            <option key={v} value={v}>
+              {v === 'Todos' ? 'Todos los vendedores' : v}
+            </option>
+          ))}
+        </select>
+        {(estado !== 'Todos' || mes !== 'Todos' || vendedor !== 'Todos') && (
+          <Chip
+            activo
+            onClick={() => {
+              setEstado('Todos')
+              setMes('Todos')
+              setVendedor('Todos')
+            }}
+          >
+            Limpiar filtros
+          </Chip>
+        )}
       </div>
 
       {filtradas.length === 0 ? (
@@ -226,9 +313,24 @@ export default function Cotizaciones() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Link to={`/pdf/${c.id}`}>
+                          <Link to={`/pdf/${c.id}?imprimir=1`}>
                             <Boton tamano="sm">PDF</Boton>
                           </Link>
+                          <Boton tamano="sm" onClick={() => setCompartirId(c.id)}>
+                            <Share2 size={14} /> Compartir
+                          </Boton>
+                          {c.estado === 'Borrador' && puedeEditar(c) && (
+                            <Boton
+                              tamano="sm"
+                              variante="primario"
+                              onClick={() => {
+                                abrirBorrador(c.id)
+                                navigate(`/cotizacion/${c.id}`)
+                              }}
+                            >
+                              <Pencil size={14} /> Editar
+                            </Boton>
+                          )}
                           {puede('cotizaciones.crear') && (
                             <Boton
                               tamano="sm"
@@ -240,9 +342,9 @@ export default function Cotizaciones() {
                               Duplicar
                             </Boton>
                           )}
-                          {c.estado === 'Enviada' && (
+                          {(c.estado === 'Enviada' || c.estado === 'Vencida') && (
                             <>
-                              <Boton tamano="sm" onClick={() => cambiarEstado(c.id, 'Aceptada')}>
+                              <Boton tamano="sm" onClick={() => setPagoDe(c)}>
                                 Aceptar
                               </Boton>
                               <Boton
@@ -278,6 +380,42 @@ export default function Cotizaciones() {
           </div>
         </Card>
       )}
+
+      {pagoDe !== null && (
+        <RegistrarPago
+          numero={pagoDe.numero}
+          total={calcularTotales(pagoDe).total}
+          pago={pagoDe.pago}
+          onCerrar={() => setPagoDe(null)}
+          onGuardar={(pago) => {
+            registrarPago(pagoDe.id, pago)
+            setPagoDe(null)
+          }}
+        />
+      )}
+
+      {compartirId !== null &&
+        (() => {
+          const c = cotizacionesVisibles.find((x) => x.id === compartirId)
+          if (c === undefined) return null
+          const cli = cliente(c.clienteId)
+          return (
+            <Compartir
+              cotizacionId={c.id}
+              numero={c.numero}
+              telefono={cli?.telefono ?? ''}
+              email={cli?.email ?? ''}
+              mensaje={mensajeWhatsApp(
+                c,
+                cli?.nombre ?? 'Cliente',
+                calcularTotales(c).total,
+                c.vendedor,
+                datos.empresa.nombre.replace(/ S\.A\.S\.$/, ''),
+              )}
+              onCerrar={() => setCompartirId(null)}
+            />
+          )
+        })()}
     </div>
   )
 }
