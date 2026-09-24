@@ -13,7 +13,7 @@ export type ConfigIA = {
   modelo: string
 }
 
-export const MODELO_POR_DEFECTO = 'gemini-2.5-flash'
+export const MODELO_POR_DEFECTO = 'gemini-3.6-flash'
 
 const DOC_IA = 'ia'
 
@@ -115,12 +115,26 @@ const partes = (mensaje: Mensaje): ParteApi[] => [
   ...mensaje.adjuntos.map((a) => ({ inline_data: { mime_type: a.tipo, data: a.datos } })),
 ]
 
-const traducir = (estado: number): string => {
+const traducir = (estado: number, detalle: string): string => {
   if (estado === 400) return 'La clave de Gemini no es válida o la imagen no es compatible.'
   if (estado === 403) return 'Gemini rechazó la clave: revisa que esté activa y sin restricciones.'
+  if (estado === 404)
+    return `El modelo configurado no existe o ya no está disponible. Usa ${MODELO_POR_DEFECTO} en Ajustes → Asesor con IA.`
   if (estado === 429)
     return 'Se agotó la cuota gratuita de Gemini por ahora. Espera unos minutos e intenta de nuevo.'
-  return 'El asesor no está disponible en este momento.'
+  if (estado === 503)
+    return 'El modelo está saturado en este momento. Vuelve a intentarlo en unos minutos.'
+  return `El asesor no está disponible en este momento (error ${estado}).${detalle === '' ? '' : ` ${detalle}`}`
+}
+
+const mensajeDelError = (cuerpo: string): string => {
+  try {
+    const datos: unknown = JSON.parse(cuerpo)
+    const mensaje = (datos as { error?: { message?: string } }).error?.message
+    return typeof mensaje === 'string' ? mensaje : ''
+  } catch {
+    return ''
+  }
 }
 
 export async function preguntarIA(
@@ -128,10 +142,10 @@ export async function preguntarIA(
   historial: Mensaje[],
   materiales: Material[],
 ): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelo}:generateContent?key=${config.apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelo}:generateContent`
   const respuesta = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.apiKey },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: instruccion(materiales) }] },
       contents: historial.map((m) => ({
@@ -141,7 +155,8 @@ export async function preguntarIA(
     }),
   })
 
-  if (!respuesta.ok) throw new Error(traducir(respuesta.status))
+  if (!respuesta.ok)
+    throw new Error(traducir(respuesta.status, mensajeDelError(await respuesta.text())))
 
   const datos: unknown = await respuesta.json()
   const texto = (datos as { candidates?: { content?: { parts?: { text?: string }[] } }[] })

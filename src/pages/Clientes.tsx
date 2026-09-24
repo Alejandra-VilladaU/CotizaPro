@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { Avatar, Boton, Buscador, Campo, Card, Etiqueta, Modal, Vacio } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { copCorto, iniciales } from '../lib/format'
@@ -8,20 +8,39 @@ import { calcularTotales } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { TipoCliente } from '../lib/types'
 
+type Formulario = {
+  nombre: string
+  telefono: string
+  tipo: TipoCliente
+  documento: string
+  email: string
+  obra: string
+}
+
+const formularioVacio = (): Formulario => ({
+  nombre: '',
+  telefono: '',
+  tipo: 'Particular',
+  documento: '',
+  email: '',
+  obra: '',
+})
+
 export default function Clientes() {
-  const { cotizacionesDeCliente, crearCliente, eliminarCliente, clientesVisibles } = useDatos()
+  const {
+    cotizacionesDeCliente,
+    crearCliente,
+    actualizarCliente,
+    eliminarCliente,
+    clientesVisibles,
+  } = useDatos()
   const { puede } = useAuth()
   const navigate = useNavigate()
   const [texto, setTexto] = useState('')
   const [abrir, setAbrir] = useState(false)
-  const [nuevo, setNuevo] = useState({
-    nombre: '',
-    telefono: '',
-    tipo: 'Particular' as TipoCliente,
-    documento: '',
-    email: '',
-    obra: '',
-  })
+  const [nuevo, setNuevo] = useState<Formulario>(formularioVacio())
+  /** id del cliente que se está editando; null cuando el modal crea uno nuevo. */
+  const [editandoId, setEditandoId] = useState<string | null>(null)
 
   const q = texto.trim().toLowerCase()
   const lista = clientesVisibles.filter((c) =>
@@ -38,7 +57,14 @@ export default function Clientes() {
           </p>
         </div>
         {puede('clientes.crear') && (
-          <Boton variante="primario" onClick={() => setAbrir(true)}>
+          <Boton
+            variante="primario"
+            onClick={() => {
+              setNuevo(formularioVacio())
+              setEditandoId(null)
+              setAbrir(true)
+            }}
+          >
             + Nuevo cliente
           </Boton>
         )}
@@ -67,6 +93,26 @@ export default function Clientes() {
                         {c.tipo} · {c.telefono}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      aria-label={`Editar ${c.nombre}`}
+                      className="rounded-md p-2 text-muted hover:bg-surface hover:text-blue"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setNuevo({
+                          nombre: c.nombre,
+                          telefono: c.telefono,
+                          tipo: c.tipo,
+                          documento: c.documento ?? '',
+                          email: c.email ?? '',
+                          obra: c.obra ?? '',
+                        })
+                        setEditandoId(c.id)
+                        setAbrir(true)
+                      }}
+                    >
+                      <Pencil size={16} />
+                    </button>
                     {puede('clientes.eliminar') && (
                       <button
                         type="button"
@@ -112,7 +158,10 @@ export default function Clientes() {
       )}
 
       {abrir && (
-        <Modal titulo="Nuevo cliente" onCerrar={() => setAbrir(false)}>
+        <Modal
+          titulo={editandoId === null ? 'Nuevo cliente' : 'Editar cliente'}
+          onCerrar={() => setAbrir(false)}
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             <Campo
               etiqueta="Nombre"
@@ -160,12 +209,17 @@ export default function Clientes() {
             className="mt-4 w-full"
             disabled={nuevo.nombre.trim() === '' || nuevo.telefono.trim() === ''}
             onClick={() => {
+              if (editandoId !== null) {
+                actualizarCliente(editandoId, nuevo)
+                setAbrir(false)
+                return
+              }
               const creado = crearCliente(nuevo)
               setAbrir(false)
               navigate(`/clientes/${creado.id}`)
             }}
           >
-            Guardar cliente
+            {editandoId === null ? 'Guardar cliente' : 'Guardar cambios'}
           </Boton>
         </Modal>
       )}

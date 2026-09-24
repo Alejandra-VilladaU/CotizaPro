@@ -12,7 +12,7 @@ real**, con un botón para pasarlos a la cotización en curso.
 - Se consume por API REST desde el navegador: no hace falta servidor propio ni backend nuevo.
 
 Límites de la capa gratuita (los fija Google y cambian con el tiempo): del orden de unas decenas
-de consultas por minuto y algunos cientos por día para `gemini-2.5-flash`. Si se agota, la app
+de consultas por minuto y algunos cientos por día para `gemini-3.6-flash`. Si se agota, la app
 muestra "Se agotó la cuota gratuita de Gemini por ahora".
 
 ## Configurar la clave (5 minutos, una sola vez)

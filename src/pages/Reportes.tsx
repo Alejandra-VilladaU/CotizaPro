@@ -2,7 +2,7 @@ import { Download } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Boton, Card, Chip, Etiqueta, Kpi } from '../components/ui'
 import { cop, copCorto } from '../lib/format'
-import { exportarCotizaciones } from '../lib/export'
+import { exportarCotizaciones, exportarMaterialesCotizados } from '../lib/export'
 import { calcularTotales } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cotizacion, EstadoCotizacion } from '../lib/types'
@@ -24,12 +24,21 @@ const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct
 export default function Reportes() {
   const { datos, cliente } = useDatos()
   const [dias, setDias] = useState(90)
+  const [vendedor, setVendedor] = useState('Todos')
+
+  const vendedores = useMemo(() => {
+    const nombres = new Set(datos.cotizaciones.map((c) => c.vendedor).filter((v) => v !== ''))
+    return ['Todos', ...[...nombres].sort((a, b) => a.localeCompare(b))]
+  }, [datos.cotizaciones])
 
   const cotizaciones = useMemo(() => {
-    if (dias === 0) return datos.cotizaciones
-    const desde = Date.now() - dias * 86_400_000
-    return datos.cotizaciones.filter((c) => new Date(c.creada).getTime() >= desde)
-  }, [datos.cotizaciones, dias])
+    const desde = dias === 0 ? 0 : Date.now() - dias * 86_400_000
+    return datos.cotizaciones.filter(
+      (c) =>
+        new Date(c.creada).getTime() >= desde &&
+        (vendedor === 'Todos' || c.vendedor === vendedor),
+    )
+  }, [datos.cotizaciones, dias, vendedor])
 
   const aceptadas = cotizaciones.filter((c) => c.estado === 'Aceptada')
   const emitidas = cotizaciones.filter((c) => c.estado !== 'Borrador')
@@ -91,21 +100,48 @@ export default function Reportes() {
             Ventas y cotizaciones de todo el equipo, por vendedor, mes y cliente.
           </p>
         </div>
-        <Boton
-          onClick={() =>
-            exportarCotizaciones('cotizapro-reporte-global', cotizaciones, datos.clientes)
-          }
-        >
-          <Download size={16} /> Exportar Excel
-        </Boton>
+        <div className="flex flex-wrap gap-2">
+          <Boton
+            onClick={() =>
+              exportarCotizaciones('cotizapro-reporte-global', cotizaciones, datos.clientes)
+            }
+          >
+            <Download size={16} /> Exportar cotizaciones
+          </Boton>
+          <Boton
+            variante="primario"
+            onClick={() =>
+              exportarMaterialesCotizados(
+                'cotizapro-reporte-materiales',
+                cotizaciones,
+                datos.clientes,
+                datos.materiales,
+              )
+            }
+          >
+            <Download size={16} /> Exportar materiales
+          </Boton>
+        </div>
       </header>
 
-      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+      <div className="mb-5 flex flex-wrap items-center gap-2 pb-1">
         {RANGOS.map((r) => (
           <Chip key={r.dias} activo={dias === r.dias} onClick={() => setDias(r.dias)}>
             {r.label}
           </Chip>
         ))}
+        <select
+          value={vendedor}
+          onChange={(e) => setVendedor(e.target.value)}
+          aria-label="Filtrar por vendedor"
+          className="rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-semibold text-navy outline-none"
+        >
+          {vendedores.map((v) => (
+            <option key={v} value={v}>
+              Vendedor: {v}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

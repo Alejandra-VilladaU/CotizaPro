@@ -22,7 +22,7 @@ const FILTROS: (EstadoCotizacion | 'Todas')[] = ['Todas', 'Enviada', 'Aceptada',
 export default function ClienteDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { cliente, cotizacionesDeCliente, crearBorrador, duplicar } = useDatos()
+  const { cliente, cotizacionesDeCliente, crearBorrador, duplicar, datos } = useDatos()
   const { puede } = useAuth()
   const [filtro, setFiltro] = useState<EstadoCotizacion | 'Todas'>('Todas')
 
@@ -144,6 +144,7 @@ export default function ClienteDetalle() {
                             `cotizacion-${c.numero ?? 'borrador'}`,
                             c,
                             actual,
+                            datos.materiales,
                           )
                         }
                       >
@@ -178,8 +179,8 @@ export default function ClienteDetalle() {
             variante="primario"
             className="mt-5 w-full"
             onClick={() => {
-              crearBorrador(actual.id)
-              navigate('/')
+              const nueva = crearBorrador(actual.id)
+              navigate(`/cotizacion/${nueva.id}`)
             }}
           >
             + Nueva cotización para {actual.nombre.split(' ').slice(0, 2).join(' ')}

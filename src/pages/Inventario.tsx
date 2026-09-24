@@ -15,6 +15,7 @@ const vacio: Borrador = {
   codigo: '',
   nombre: '',
   categoria: '',
+  descripcion: '',
   unidad: 'unidad',
   precio: 0,
   stock: 0,
@@ -41,7 +42,10 @@ export default function Inventario() {
   const lista = datos.materiales.filter((m) => {
     const q = texto.trim().toLowerCase()
     const coincide =
-      q === '' || m.nombre.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q)
+      q === '' ||
+      m.nombre.toLowerCase().includes(q) ||
+      m.codigo.toLowerCase().includes(q) ||
+      (m.descripcion ?? '').toLowerCase().includes(q)
     const porCategoria = categoria === 'Todas' || m.categoria === categoria
     const porEstado = estadoFiltro === 'Todos' || estadoStock(m) === estadoFiltro
     return coincide && porCategoria && porEstado
@@ -138,6 +142,7 @@ export default function Inventario() {
                 <th className="px-4 py-3">Material</th>
                 <th className="px-3 py-3">Código</th>
                 <th className="px-3 py-3">Categoría</th>
+                <th className="px-3 py-3">Descripción</th>
                 <th className="px-3 py-3">Unidad</th>
                 <th className="px-3 py-3 text-right">Precio unit.</th>
                 <th className="px-3 py-3 text-right">Stock</th>
@@ -152,6 +157,9 @@ export default function Inventario() {
                   <td className="px-4 py-3 text-sm font-semibold text-navy">{m.nombre}</td>
                   <td className="px-3 py-3 text-xs text-muted">{m.codigo}</td>
                   <td className="px-3 py-3 text-sm">{m.categoria}</td>
+                  <td className="max-w-[260px] px-3 py-3 text-xs text-muted">
+                    {m.descripcion ?? ''}
+                  </td>
                   <td className="px-3 py-3 text-sm text-muted">{UNIDAD_LABEL[m.unidad]}</td>
                   <td className="px-3 py-3 text-right text-sm font-bold tabular-nums">
                     {cop(m.precio)}
@@ -175,7 +183,7 @@ export default function Inventario() {
               ))}
               {lista.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted">
+                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-muted">
                     Ningún material coincide con los filtros.
                   </td>
                 </tr>
@@ -191,7 +199,8 @@ export default function Inventario() {
       </Card>
 
       <p className="mt-3 text-xs text-muted">
-        Formato del CSV: <code>codigo,nombre,categoria,unidad,precio,stock,stock_minimo</code> — las
+        Formato del CSV:{' '}
+        <code>codigo,nombre,categoria,unidad,precio,stock,stock_minimo,descripcion</code> — las
         filas con un código existente actualizan el material.
       </p>
 
@@ -207,6 +216,13 @@ export default function Inventario() {
               className="sm:col-span-2"
               value={editar.nombre}
               onChange={(e) => setEditar({ ...editar, nombre: e.target.value })}
+            />
+            <Campo
+              etiqueta="Descripción"
+              className="sm:col-span-2"
+              value={editar.descripcion ?? ''}
+              onChange={(e) => setEditar({ ...editar, descripcion: e.target.value })}
+              placeholder="Detalle que aparece en el reporte y en el PDF"
             />
             <Campo
               etiqueta="Código"

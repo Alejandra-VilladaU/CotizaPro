@@ -13,7 +13,7 @@ import { backendFirestore } from './datosFirestore'
 import { firebaseHabilitado } from './firebase'
 import { estaVencida, itemDesdeMaterial } from './quote'
 import { CLIENTES_SEED, COTIZACIONES_SEED, EMPRESA_SEED, MATERIALES_SEED } from './seed'
-import type { Cliente, Cotizacion, Empresa, Material } from './types'
+import type { Cliente, Cotizacion, Empresa, Material, Pago } from './types'
 
 const CLAVE = 'cotizapro.v1'
 const CLAVE_BORRADOR = 'cotizapro.borrador'
@@ -105,6 +105,8 @@ type Contexto = {
   sincronizarPrecios: (cotizacionId: string) => void
   generarCotizacion: (id: string) => Promise<number>
   cambiarEstado: (id: string, estado: Cotizacion['estado']) => void
+  /** Registra el pago de una cotización y la deja como Aceptada. */
+  registrarPago: (id: string, pago: Omit<Pago, 'registradoPor'>) => void
   duplicar: (id: string) => string
   eliminarCotizacion: (id: string) => void
   abrirBorrador: (id: string) => void
@@ -428,7 +430,15 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       },
 
       cambiarEstado: (id, estado) => {
-        mapear(id, (c) => ({ ...c, estado }))
+        mapear(id, (c) => ({ ...c, estado, pago: estado === 'Aceptada' ? (c.pago ?? null) : null }))
+      },
+
+      registrarPago: (id, pago) => {
+        mapear(id, (c) => ({
+          ...c,
+          estado: 'Aceptada',
+          pago: { ...pago, registradoPor: usuario?.nombre ?? c.vendedor },
+        }))
       },
 
       duplicar: (id) => {
@@ -550,7 +560,8 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
 
         filas.slice(inicio).forEach((fila, indice) => {
           const celdas = fila.split(separador).map((c) => c.trim().replace(/^"|"$/g, ''))
-          const [codigo, nombre, categoria, unidad, precio, stock, stockMinimo] = celdas
+          const [codigo, nombre, categoria, unidad, precio, stock, stockMinimo, descripcion] =
+            celdas
           if (codigo === undefined || nombre === undefined || precio === undefined) {
             errores.push(`Fila ${indice + inicio + 1}: faltan columnas obligatorias.`)
             return
@@ -565,6 +576,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
             codigo,
             nombre,
             categoria: categoria === undefined || categoria === '' ? 'Sin categoría' : categoria,
+            descripcion: descripcion ?? '',
             unidad: (unidad ?? 'unidad') as Material['unidad'],
             precio: precioNum,
             stock: Number(stock ?? 0) || 0,
