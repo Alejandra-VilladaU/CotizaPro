@@ -34,12 +34,13 @@ export default function Compartir({
   const enlace = `${window.location.origin}/pdf/${cotizacion.id}`
   const titulo = numero === null ? 'Cotización (borrador)' : `Cotización #${numero}`
   const soloDigitos = telefono.replace(/\D/g, '')
-  // Colombia: los números de 10 dígitos necesitan el indicativo 57 para wa.me.
+  // Colombia: los números de 10 dígitos necesitan el indicativo 57.
   const internacional = soloDigitos.length === 10 ? `57${soloDigitos}` : soloDigitos
+  // En computador se abre WhatsApp Web directamente: no hace falta la app de escritorio.
   const wa =
     internacional === ''
       ? null
-      : `https://wa.me/${internacional}?text=${encodeURIComponent(mensaje)}`
+      : `https://web.whatsapp.com/send?phone=${internacional}&text=${encodeURIComponent(mensaje)}`
   const correo =
     email === ''
       ? null
@@ -167,7 +168,8 @@ export default function Compartir({
       {estado === 'adjuntar' && (
         <p className="mt-3 rounded-[10px] bg-blue-soft p-3 text-[13px] leading-relaxed text-navy">
           Este navegador no adjunta archivos por sí solo: el PDF quedó en tus descargas. Adjúntalo
-          en la conversación que acaba de abrirse. Desde el celular el PDF se adjunta solo.
+          con el clip de adjuntar en la conversación de WhatsApp Web que acaba de abrirse (no necesitas la
+          app de escritorio). Desde el celular el PDF se adjunta solo.
         </p>
       )}
 

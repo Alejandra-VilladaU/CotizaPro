@@ -117,11 +117,11 @@ function Sidebar() {
   const entradas = useEntradas()
   const items = borrador?.items.length ?? 0
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-white lg:flex">
-      <div className="flex h-16 items-center px-5">
+    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-line bg-white lg:flex">
+      <div className="flex h-16 shrink-0 items-center px-5">
         <Logo />
       </div>
-      <nav className="flex-1 px-2 py-2">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {entradas.map(({ to, label, icono: Icono }) => (
           <NavLink
             key={to}
@@ -145,7 +145,7 @@ function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-line p-2">
+      <div className="shrink-0 border-t border-line p-2">
         <Sesion />
         <NavLink
           to="/ajustes"
