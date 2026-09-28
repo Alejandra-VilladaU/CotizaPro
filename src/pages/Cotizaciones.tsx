@@ -401,8 +401,7 @@ export default function Cotizaciones() {
           const cli = cliente(c.clienteId)
           return (
             <Compartir
-              cotizacionId={c.id}
-              numero={c.numero}
+              cotizacion={c}
               telefono={cli?.telefono ?? ''}
               email={cli?.email ?? ''}
               mensaje={mensajeWhatsApp(

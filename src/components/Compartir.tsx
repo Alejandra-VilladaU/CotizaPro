@@ -1,29 +1,37 @@
 import { Check, Copy, Download, Mail, MessageCircle, Printer } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { archivoPdf, compartirPdf, descargarPdf } from '../lib/pdf'
+import { useDatos } from '../lib/store'
 import { Boton, Etiqueta, Modal } from './ui'
+import type { Cotizacion } from '../lib/types'
 
 /**
  * Medios de envío hacia los datos registrados del cliente: WhatsApp a su teléfono y
- * correo a su email. Si el cliente no tiene alguno, la opción queda deshabilitada.
+ * correo a su email. El PDF se genera en el navegador y se adjunta al mensaje; si el
+ * dispositivo no admite compartir archivos, se descarga y se abre WhatsApp para adjuntarlo.
  */
 export default function Compartir({
-  cotizacionId,
-  numero,
+  cotizacion,
   mensaje,
   telefono,
   email,
   onCerrar,
 }: {
-  cotizacionId: string
-  numero: number | null
+  cotizacion: Cotizacion
   mensaje: string
   telefono: string
   email: string
   onCerrar: () => void
 }) {
+  const { cliente, datos } = useDatos()
   const [copiado, setCopiado] = useState<'enlace' | 'mensaje' | null>(null)
-  const enlace = `${window.location.origin}/pdf/${cotizacionId}`
+  const [estado, setEstado] = useState<'listo' | 'generando' | 'descargado' | 'adjuntar'>(
+    'listo',
+  )
+
+  const numero = cotizacion.numero
+  const enlace = `${window.location.origin}/pdf/${cotizacion.id}`
   const titulo = numero === null ? 'Cotización (borrador)' : `Cotización #${numero}`
   const soloDigitos = telefono.replace(/\D/g, '')
   // Colombia: los números de 10 dígitos necesitan el indicativo 57 para wa.me.
@@ -31,13 +39,37 @@ export default function Compartir({
   const wa =
     internacional === ''
       ? null
-      : `https://wa.me/${internacional}?text=${encodeURIComponent(`${mensaje} ${enlace}`)}`
+      : `https://wa.me/${internacional}?text=${encodeURIComponent(mensaje)}`
   const correo =
     email === ''
       ? null
-      : `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(
-          titulo,
-        )}&body=${encodeURIComponent(`${mensaje}\n\n${enlace}`)}`
+      : `mailto:${email}?subject=${encodeURIComponent(titulo)}&body=${encodeURIComponent(
+          `${mensaje}\n\n${enlace}`,
+        )}`
+
+  const clienteActual = cliente(cotizacion.clienteId)
+  const pdf = () => archivoPdf(cotizacion, clienteActual, datos.empresa, datos.materiales)
+
+  const enviarWhatsApp = async () => {
+    setEstado('generando')
+    const archivo = await pdf()
+    const compartido = await compartirPdf(archivo, titulo, mensaje)
+    if (compartido) {
+      setEstado('listo')
+      return
+    }
+    // Respaldo de escritorio: WhatsApp Web no recibe adjuntos por URL, así que
+    // bajamos el PDF y abrimos el chat para arrastrarlo.
+    await descargarPdf(cotizacion, clienteActual, datos.empresa, datos.materiales)
+    setEstado('adjuntar')
+    if (wa !== null) window.open(wa, '_blank', 'noopener')
+  }
+
+  const guardar = async (siguiente: 'descargado' | 'adjuntar' = 'descargado') => {
+    setEstado('generando')
+    await descargarPdf(cotizacion, clienteActual, datos.empresa, datos.materiales)
+    setEstado(siguiente)
+  }
 
   const copiar = async (valor: string, cual: 'enlace' | 'mensaje') => {
     await navigator.clipboard.writeText(valor)
@@ -46,12 +78,12 @@ export default function Compartir({
   }
 
   const caja =
-    'grid place-items-center gap-2 rounded-[10px] border border-line p-3 text-center text-xs font-bold text-navy hover:bg-surface'
+    'grid place-items-center gap-2 rounded-[10px] border border-line p-3 text-center text-xs font-bold text-navy hover:bg-surface disabled:opacity-50'
 
   return (
     <Modal
       titulo={`Compartir ${titulo.toLowerCase()}`}
-      subtitulo="PDF de 1 página · se envía a los datos registrados del cliente"
+      subtitulo="El PDF se adjunta al mensaje, no se envía un enlace"
       onCerrar={onCerrar}
     >
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -63,12 +95,17 @@ export default function Compartir({
             Sin teléfono
           </span>
         ) : (
-          <a href={wa} target="_blank" rel="noreferrer" className={caja}>
+          <button
+            type="button"
+            className={caja}
+            disabled={estado === 'generando'}
+            onClick={() => void enviarWhatsApp()}
+          >
             <span className="grid h-10 w-10 place-items-center rounded-full bg-ok-soft text-ok">
               <MessageCircle size={18} />
             </span>
             WhatsApp
-          </a>
+          </button>
         )}
         {correo === null ? (
           <span className={`${caja} opacity-50`}>
@@ -78,19 +115,24 @@ export default function Compartir({
             Sin correo
           </span>
         ) : (
-          <a href={correo} className={caja}>
+          <a href={correo} className={caja} onClick={() => void guardar('adjuntar')}>
             <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-soft text-blue">
               <Mail size={18} />
             </span>
             Correo
           </a>
         )}
-        <Link to={`/pdf/${cotizacionId}`} className={caja}>
+        <button
+          type="button"
+          className={caja}
+          disabled={estado === 'generando'}
+          onClick={() => void guardar()}
+        >
           <span className="grid h-10 w-10 place-items-center rounded-full bg-danger-soft text-danger">
             <Download size={18} />
           </span>
           Descargar PDF
-        </Link>
+        </button>
         <button type="button" onClick={() => void copiar(enlace, 'enlace')} className={caja}>
           <span className="grid h-10 w-10 place-items-center rounded-full bg-surface text-muted">
             {copiado === 'enlace' ? <Check size={18} /> : <Copy size={18} />}
@@ -116,17 +158,33 @@ export default function Compartir({
         </button>
       </div>
 
+      {estado === 'descargado' && (
+        <p className="mt-3 rounded-[10px] bg-blue-soft p-3 text-[13px] leading-relaxed text-navy">
+          El PDF de la cotización quedó en tus descargas.
+        </p>
+      )}
+
+      {estado === 'adjuntar' && (
+        <p className="mt-3 rounded-[10px] bg-blue-soft p-3 text-[13px] leading-relaxed text-navy">
+          Este navegador no adjunta archivos por sí solo: el PDF quedó en tus descargas. Adjúntalo
+          en la conversación que acaba de abrirse. Desde el celular el PDF se adjunta solo.
+        </p>
+      )}
+
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {wa !== null && (
-          <a href={wa} target="_blank" rel="noreferrer" className="block">
-            <Boton variante="primario" className="w-full">
-              Enviar por WhatsApp
-            </Boton>
-          </a>
+          <Boton
+            variante="primario"
+            className="w-full"
+            disabled={estado === 'generando'}
+            onClick={() => void enviarWhatsApp()}
+          >
+            {estado === 'generando' ? 'Generando PDF…' : 'Enviar PDF por WhatsApp'}
+          </Boton>
         )}
-        <Link to={`/pdf/${cotizacionId}?imprimir=1`} className="block">
+        <Link to={`/pdf/${cotizacion.id}?imprimir=1`} className="block">
           <Boton className="w-full">
-            <Printer size={16} /> Imprimir / Descargar PDF
+            <Printer size={16} /> Imprimir / Vista previa
           </Boton>
         </Link>
       </div>
