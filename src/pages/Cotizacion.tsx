@@ -716,8 +716,7 @@ export default function CotizacionPage() {
 
       {compartir !== null && (
         <Compartir
-          cotizacionId={actual.id}
-          numero={actual.numero}
+          cotizacion={actual}
           telefono={clienteActual?.telefono ?? ''}
           email={clienteActual?.email ?? ''}
           mensaje={mensajeWhatsApp(

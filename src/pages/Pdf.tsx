@@ -1,8 +1,9 @@
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Boton, Vacio } from '../components/ui'
 import { UNIDAD_LABEL, cop, fecha } from '../lib/format'
+import { descargarPdf } from '../lib/pdf'
 import { calcularTotales, totalLinea, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
 
@@ -47,9 +48,18 @@ export default function Pdf() {
         <Link to={`/cotizacion/${actual.id}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-blue">
           <ArrowLeft size={16} /> Volver a la cotización
         </Link>
-        <Boton variante="primario" onClick={() => window.print()}>
-          <Printer size={16} /> Imprimir o guardar PDF
-        </Boton>
+        <div className="flex flex-wrap gap-2">
+          <Boton
+            onClick={() =>
+              void descargarPdf(actual, cli, empresa, datos.materiales)
+            }
+          >
+            <Download size={16} /> Descargar PDF
+          </Boton>
+          <Boton variante="primario" onClick={() => window.print()}>
+            <Printer size={16} /> Imprimir
+          </Boton>
+        </div>
       </div>
 
       <article className="print-sheet mx-auto w-[816px] max-w-full bg-white p-[46px] shadow-[0_10px_30px_rgba(4,36,76,0.12)]">
