@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Badge, Boton, Buscador, Campo, Card, Chip, Etiqueta, Modal } from '../components/ui'
 import { UNIDAD_LABEL, cop, copCorto, fecha } from '../lib/format'
+import { siguienteCodigo } from '../lib/inventario'
 import { estadoStock } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Material, Unidad } from '../lib/types'
@@ -8,6 +9,8 @@ import { Kpi } from '../components/ui'
 
 const TONO = { Disponible: 'ok', 'Stock bajo': 'warn', 'Sin stock': 'danger' } as const
 const UNIDADES: Unidad[] = ['unidad', 'bulto', 'm2', 'm3', 'kg', 'ml']
+/** Valor centinela del desplegable de categorías para escribir una nueva. */
+const NUEVA = '__nueva__'
 
 type Borrador = Omit<Material, 'id' | 'actualizado'> & { id?: string }
 
@@ -31,13 +34,25 @@ export default function Inventario() {
     'Todos',
   )
   const [editar, setEditar] = useState<Borrador | null>(null)
+  const [categoriaNueva, setCategoriaNueva] = useState(false)
   const [resultadoImport, setResultadoImport] = useState<string | null>(null)
   const archivo = useRef<HTMLInputElement>(null)
 
-  const categorias = useMemo(
-    () => ['Todas', ...Array.from(new Set(datos.materiales.map((m) => m.categoria))).sort()],
+  const categoriasExistentes = useMemo(
+    () => Array.from(new Set(datos.materiales.map((m) => m.categoria))).sort(),
     [datos.materiales],
   )
+  const categorias = ['Todas', ...categoriasExistentes]
+
+  const abrirNuevo = () => {
+    setCategoriaNueva(categoriasExistentes.length === 0)
+    setEditar({ ...vacio, codigo: siguienteCodigo(datos.materiales) })
+  }
+
+  const abrirEdicion = (material: Material) => {
+    setCategoriaNueva(false)
+    setEditar({ ...material })
+  }
 
   const lista = datos.materiales.filter((m) => {
     const q = texto.trim().toLowerCase()
@@ -87,7 +102,7 @@ export default function Inventario() {
             }}
           />
           <Boton onClick={() => archivo.current?.click()}>Importar CSV</Boton>
-          <Boton variante="primario" onClick={() => setEditar(vacio)}>
+          <Boton variante="primario" onClick={abrirNuevo}>
             + Nuevo material
           </Boton>
         </div>
@@ -171,7 +186,7 @@ export default function Inventario() {
                   <td className="px-3 py-3 text-xs text-muted">{fecha(m.actualizado)}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1.5">
-                      <Boton tamano="sm" onClick={() => setEditar({ ...m })}>
+                      <Boton tamano="sm" onClick={() => abrirEdicion(m)}>
                         Editar
                       </Boton>
                       <Boton tamano="sm" variante="peligro" onClick={() => eliminarMaterial(m.id)}>
@@ -224,17 +239,52 @@ export default function Inventario() {
               onChange={(e) => setEditar({ ...editar, descripcion: e.target.value })}
               placeholder="Detalle que aparece en el reporte y en el PDF"
             />
-            <Campo
-              etiqueta="Código"
-              value={editar.codigo}
-              onChange={(e) => setEditar({ ...editar, codigo: e.target.value })}
-              placeholder="COD-1023"
-            />
-            <Campo
-              etiqueta="Categoría"
-              value={editar.categoria}
-              onChange={(e) => setEditar({ ...editar, categoria: e.target.value })}
-            />
+            <label className="block">
+              <Etiqueta className="mb-1">Código</Etiqueta>
+              <input
+                value={editar.codigo}
+                readOnly
+                aria-label="Código del material"
+                className="w-full rounded-[10px] border border-line bg-surface px-3 py-2.5 text-sm font-bold text-navy outline-none"
+              />
+              <span className="mt-1 block text-xs text-muted">
+                {editar.id === undefined
+                  ? 'Se genera automáticamente'
+                  : 'El código no cambia al editar'}
+              </span>
+            </label>
+            <label className="block">
+              <Etiqueta className="mb-1">Categoría</Etiqueta>
+              <select
+                value={categoriaNueva ? NUEVA : editar.categoria}
+                onChange={(e) => {
+                  if (e.target.value === NUEVA) {
+                    setCategoriaNueva(true)
+                    setEditar({ ...editar, categoria: '' })
+                    return
+                  }
+                  setCategoriaNueva(false)
+                  setEditar({ ...editar, categoria: e.target.value })
+                }}
+                className="w-full rounded-[10px] border border-line bg-white px-3 py-2.5 text-sm outline-none"
+              >
+                <option value="">Selecciona una categoría</option>
+                {categoriasExistentes.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                <option value={NUEVA}>+ Crear categoría nueva</option>
+              </select>
+              {categoriaNueva && (
+                <input
+                  value={editar.categoria}
+                  onChange={(e) => setEditar({ ...editar, categoria: e.target.value })}
+                  placeholder="Nombre de la categoría"
+                  className="mt-2 w-full rounded-[10px] border border-line bg-white px-3 py-2.5 text-sm outline-none placeholder:text-muted focus:border-blue"
+                />
+              )}
+            </label>
             <label className="block">
               <Etiqueta className="mb-1">Unidad</Etiqueta>
               <select
@@ -277,7 +327,11 @@ export default function Inventario() {
           <Boton
             variante="primario"
             className="mt-4 w-full"
-            disabled={editar.nombre.trim() === '' || editar.codigo.trim() === '' || editar.precio <= 0}
+            disabled={
+              editar.nombre.trim() === '' ||
+              editar.categoria.trim() === '' ||
+              editar.precio <= 0
+            }
             onClick={() => {
               guardarMaterial(editar)
               setEditar(null)
