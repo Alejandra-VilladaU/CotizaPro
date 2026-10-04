@@ -53,10 +53,17 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
-    // Inventario compartido: todo el equipo lo consulta, solo el administrador lo modifica.
+    // Inventario compartido: todo el equipo lo consulta y solo el administrador lo modifica,
+    // salvo el stock: al aceptar una cotización el vendedor descuenta las cantidades
+    // vendidas (y las devuelve si se revierte el estado), sin tocar ningún otro campo.
     match /materiales/{materialId} {
       allow read: if activo();
-      allow create, update, delete: if esAdmin();
+      allow create, delete: if esAdmin();
+      allow update: if esAdmin()
+        || (activo()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['stock', 'actualizado'])
+            && request.resource.data.stock is number);
     }
 
     // Clientes: los lee todo el equipo (una cotización necesita los datos de su cliente),

@@ -72,6 +72,8 @@ export type Cotizacion = {
   /** Autorización explícita registrada por el administrador para editar una cotización ajena. */
   autorizacionEdicion?: { por: string; uid: string; fecha: string } | null
   pago?: Pago | null
+  /** true mientras las cantidades de la cotización están descontadas del inventario. */
+  stockDescontado?: boolean
   creada: string
   emitida: string | null
   actualizada: string

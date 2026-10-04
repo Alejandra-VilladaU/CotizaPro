@@ -21,6 +21,12 @@ export type BackendDatos = {
   suscribir: (cb: (parcial: Parcial) => void, onError: (mensaje: string) => void) => () => void
   guardarMaterial: (material: Material) => Promise<void>
   guardarMateriales: (materiales: Material[]) => Promise<void>
+  /**
+   * Suma los deltas al stock remoto dentro de una transacción: dos cotizaciones
+   * aceptadas a la vez no pueden perder el descuento de la otra. En modo local no
+   * hace nada porque el stock solo vive en este navegador.
+   */
+  moverStock: (movimientos: { id: string; delta: number }[]) => Promise<void>
   eliminarMaterial: (id: string) => Promise<void>
   guardarCliente: (cliente: Cliente) => Promise<void>
   eliminarCliente: (id: string) => Promise<void>
@@ -46,6 +52,7 @@ export const backendLocalDatos = (): BackendDatos => ({
   suscribir: () => () => undefined,
   guardarMaterial: nada,
   guardarMateriales: nada,
+  moverStock: nada,
   eliminarMaterial: nada,
   guardarCliente: nada,
   eliminarCliente: nada,
