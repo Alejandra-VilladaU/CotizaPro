@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Download, Pencil, Share2 } from 'lucide-react'
-import { Badge, Boton, Buscador, Card, Chip, Etiqueta, Kpi, Vacio } from '../components/ui'
+import { Badge, Banner, Boton, Buscador, Card, Chip, Etiqueta, Kpi, Vacio } from '../components/ui'
 import Compartir from '../components/Compartir'
 import RegistrarPago from '../components/RegistrarPago'
 import { useAuth } from '../lib/auth'
 import { exportarCotizaciones } from '../lib/export'
 import { cop, copCorto, diasRestantes, fecha, fechaCorta } from '../lib/format'
+import { mensajeFaltantes } from '../lib/inventario'
 import { calcularTotales, mensajeWhatsApp, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cotizacion, EstadoCotizacion } from '../lib/types'
@@ -70,6 +71,7 @@ export default function Cotizaciones() {
   const [vendedor, setVendedor] = useState('Todos')
   const [pagoDe, setPagoDe] = useState<Cotizacion | null>(null)
   const [compartirId, setCompartirId] = useState<string | null>(null)
+  const [avisoStock, setAvisoStock] = useState<string | null>(null)
 
   const conTotales = useMemo(
     () =>
@@ -154,6 +156,17 @@ export default function Cotizaciones() {
           )}
         </div>
       </div>
+
+      {avisoStock !== null && (
+        <div className="mb-4">
+          <Banner tono="warn">
+            <span className="flex-1">{avisoStock}</span>
+            <button type="button" onClick={() => setAvisoStock(null)} className="font-bold underline">
+              Entendido
+            </button>
+          </Banner>
+        </div>
+      )}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi
@@ -350,7 +363,7 @@ export default function Cotizaciones() {
                               <Boton
                                 tamano="sm"
                                 variante="peligro"
-                                onClick={() => cambiarEstado(c.id, 'Rechazada')}
+                                onClick={() => setAvisoStock(mensajeFaltantes(cambiarEstado(c.id, 'Rechazada')))}
                               >
                                 Rechazar
                               </Boton>
@@ -388,7 +401,7 @@ export default function Cotizaciones() {
           pago={pagoDe.pago}
           onCerrar={() => setPagoDe(null)}
           onGuardar={(pago) => {
-            registrarPago(pagoDe.id, pago)
+            setAvisoStock(mensajeFaltantes(registrarPago(pagoDe.id, pago)))
             setPagoDe(null)
           }}
         />

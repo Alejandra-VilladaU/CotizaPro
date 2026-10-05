@@ -13,6 +13,7 @@ import { backendFirestore } from './datosFirestore'
 import { firebaseHabilitado } from './firebase'
 import { estaVencida, itemDesdeMaterial } from './quote'
 import { CLIENTES_SEED, COTIZACIONES_SEED, EMPRESA_SEED, MATERIALES_SEED } from './seed'
+import type { Faltante } from './inventario'
 import type { Cliente, Cotizacion, Empresa, Material, Pago } from './types'
 
 const CLAVE = 'cotizapro.v1'
@@ -104,9 +105,14 @@ type Contexto = {
   quitarItem: (cotizacionId: string, materialId: string) => void
   sincronizarPrecios: (cotizacionId: string) => void
   generarCotizacion: (id: string) => Promise<number>
-  cambiarEstado: (id: string, estado: Cotizacion['estado']) => void
-  /** Registra el pago de una cotización y la deja como Aceptada. */
-  registrarPago: (id: string, pago: Omit<Pago, 'registradoPor'>) => void
+  /**
+   * Cambia el estado y mueve el inventario: al aceptar descuenta las cantidades
+   * cotizadas y al salir de Aceptada las devuelve. Retorna los materiales cuyo
+   * stock quedó en negativo.
+   */
+  cambiarEstado: (id: string, estado: Cotizacion['estado']) => Faltante[]
+  /** Registra el pago de una cotización, la deja como Aceptada y descuenta el inventario. */
+  registrarPago: (id: string, pago: Omit<Pago, 'registradoPor'>) => Faltante[]
   duplicar: (id: string) => string
   eliminarCotizacion: (id: string) => void
   abrirBorrador: (id: string) => void
@@ -224,6 +230,38 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       }))
       guardarCotizacion(siguiente)
       return siguiente
+    }
+
+    // Una cotización aceptada cuenta como vendida: sus cantidades salen del inventario,
+    // y si se revierte el estado vuelven. El stock puede quedar en negativo para no
+    // bloquear la venta y dejar visible el faltante.
+    const moverStock = (c: Cotizacion, signo: 1 | -1): Faltante[] => {
+      const ahora = new Date().toISOString()
+      const deltas = new Map<string, number>()
+      c.items.forEach((item) => {
+        deltas.set(item.materialId, (deltas.get(item.materialId) ?? 0) + signo * item.cantidad)
+      })
+
+      const faltantes: Faltante[] = []
+      const cambiados = new Map<string, Material>()
+      deltas.forEach((delta, materialId) => {
+        const material = ref.current.materiales.find((m) => m.id === materialId)
+        if (material === undefined) return
+        const stock = material.stock + delta
+        if (stock < 0) {
+          faltantes.push({ nombre: material.nombre, faltaron: -stock, unidad: material.unidad })
+        }
+        cambiados.set(material.id, { ...material, stock, actualizado: ahora })
+      })
+      if (cambiados.size === 0) return faltantes
+
+      aplicar((d) => ({ ...d, materiales: d.materiales.map((m) => cambiados.get(m.id) ?? m) }))
+      remoto(
+        backend.moverStock(
+          [...cambiados.keys()].map((id) => ({ id, delta: deltas.get(id) ?? 0 })),
+        ),
+      )
+      return faltantes
     }
 
     const crearBorrador = (clienteId: string | null = null): Cotizacion => {
@@ -430,15 +468,35 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       },
 
       cambiarEstado: (id, estado) => {
-        mapear(id, (c) => ({ ...c, estado, pago: estado === 'Aceptada' ? (c.pago ?? null) : null }))
+        const actual = cotizacion(id)
+        if (actual === undefined) return []
+        const descontar = estado === 'Aceptada' && actual.stockDescontado !== true
+        const devolver = estado !== 'Aceptada' && actual.stockDescontado === true
+        const faltantes = descontar
+          ? moverStock(actual, -1)
+          : devolver
+            ? moverStock(actual, 1)
+            : []
+        mapear(id, (c) => ({
+          ...c,
+          estado,
+          pago: estado === 'Aceptada' ? (c.pago ?? null) : null,
+          stockDescontado: estado === 'Aceptada',
+        }))
+        return faltantes
       },
 
       registrarPago: (id, pago) => {
+        const actual = cotizacion(id)
+        if (actual === undefined) return []
+        const faltantes = actual.stockDescontado === true ? [] : moverStock(actual, -1)
         mapear(id, (c) => ({
           ...c,
           estado: 'Aceptada',
           pago: { ...pago, registradoPor: usuario?.nombre ?? c.vendedor },
+          stockDescontado: true,
         }))
+        return faltantes
       },
 
       duplicar: (id) => {
@@ -453,6 +511,8 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
           vendedor: usuario?.nombre ?? origen.vendedor,
           vendedorUid: usuario?.uid ?? origen.vendedorUid ?? null,
           autorizacionEdicion: null,
+          pago: null,
+          stockDescontado: false,
           creada: ahora,
           emitida: null,
           actualizada: ahora,
@@ -468,6 +528,9 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       },
 
       eliminarCotizacion: (id) => {
+        // Si estaba aceptada, el inventario vuelve a su valor anterior.
+        const actual = cotizacion(id)
+        if (actual !== undefined && actual.stockDescontado === true) moverStock(actual, 1)
         aplicar((d) => ({
           ...d,
           cotizaciones: d.cotizaciones.filter((c) => c.id !== id),

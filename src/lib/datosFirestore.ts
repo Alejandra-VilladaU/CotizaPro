@@ -125,6 +125,21 @@ export function backendFirestore(usuario: Usuario): BackendDatos {
       })
     },
     guardarMateriales: (materiales) => escribirLote(COLECCIONES.materiales, materiales),
+    // El stock se mueve leyendo el valor remoto dentro de la transacción: si otro
+    // vendedor aceptó una cotización entre medias, su descuento no se pierde.
+    moverStock: async (movimientos) => {
+      if (movimientos.length === 0) return
+      const ahora = new Date().toISOString()
+      await runTransaction(db(), async (tx) => {
+        const refs = movimientos.map((m) => doc(db(), COLECCIONES.materiales, m.id))
+        const actuales = await Promise.all(refs.map((ref) => tx.get(ref)))
+        actuales.forEach((snap, i) => {
+          if (!snap.exists()) return
+          const stock = Number((snap.data() as Material).stock) + movimientos[i].delta
+          tx.update(refs[i], { stock, actualizado: ahora })
+        })
+      })
+    },
     eliminarMaterial: async (id) => {
       await deleteDoc(doc(db(), COLECCIONES.materiales, id))
     },

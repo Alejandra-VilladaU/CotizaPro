@@ -19,6 +19,7 @@ import RegistrarPago from '../components/RegistrarPago'
 import { useAuth } from '../lib/auth'
 import { exportarDetalle } from '../lib/export'
 import { UNIDAD_LABEL, cop, fecha, fechaCorta, hora, iniciales } from '../lib/format'
+import { mensajeFaltantes } from '../lib/inventario'
 import type { Pago } from '../lib/types'
 import { calcularTotales, mensajeWhatsApp, preciosDesactualizados, totalLinea, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
@@ -248,6 +249,7 @@ export default function CotizacionPage() {
   /** 'emitida' abre el modal justo después de generar y al cerrarlo vuelve al historial. */
   const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(null)
   const [pagoAbierto, setPagoAbierto] = useState(false)
+  const [avisoStock, setAvisoStock] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
 
   const actual = id === undefined ? borrador : (cotizacion(id) ?? null)
@@ -384,6 +386,17 @@ export default function CotizacionPage() {
                 Autorizar edición
               </Boton>
             )}
+          </Banner>
+        </div>
+      )}
+
+      {avisoStock !== null && (
+        <div className="mb-4">
+          <Banner tono="warn">
+            <span className="flex-1">{avisoStock}</span>
+            <button type="button" onClick={() => setAvisoStock(null)} className="font-bold underline">
+              Entendido
+            </button>
           </Banner>
         </div>
       )}
@@ -638,6 +651,12 @@ export default function CotizacionPage() {
                   <br />
                   Registrado por {actual.pago.registradoPor}
                   {actual.pago.notas === '' ? '' : ` · ${actual.pago.notas}`}
+                  {actual.stockDescontado === true && (
+                    <>
+                      <br />
+                      Inventario descontado
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -741,7 +760,7 @@ export default function CotizacionPage() {
           pago={actual.pago}
           onCerrar={() => setPagoAbierto(false)}
           onGuardar={(pago: Omit<Pago, 'registradoPor'>) => {
-            registrarPago(actual.id, pago)
+            setAvisoStock(mensajeFaltantes(registrarPago(actual.id, pago)))
             setPagoAbierto(false)
           }}
         />

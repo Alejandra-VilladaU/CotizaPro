@@ -12,7 +12,7 @@ Base de datos: la predeterminada `(default)`, modo nativo.
 | Colección | Documento | Contenido | Quién escribe |
 | --- | --- | --- | --- |
 | `usuarios` | `{uid}` de Firebase Auth | perfiles, rol y permisos | Administrador (y el propio usuario solo su primer ingreso) |
-| `materiales` | `{materialId}` (`M...`) | inventario de materiales | Administrador |
+| `materiales` | `{materialId}` (`M...`) | inventario de materiales | Administrador (el vendedor solo mueve `stock` al aceptar o revertir una cotización) |
 | `clientes` | `{clienteId}` (`C...`) | clientes registrados | Administrador y el vendedor que lo creó |
 | `cotizaciones` | `{cotizacionId}` (`Q...`) | cotizaciones e historial | Administrador y el vendedor dueño |
 | `config` | `empresa` | razón social, NIT, logo, IVA | Administrador |
@@ -42,6 +42,9 @@ Perfil de cada cuenta. El id del documento es el `uid` de Firebase Authenticatio
 
 Inventario compartido. Es la única fuente de precios vigentes.
 
+El `stock` se mueve con una transacción (`moverStock`): dos cotizaciones aceptadas al mismo
+tiempo no pierden el descuento de la otra.
+
 | Campo | Tipo | Obligatorio | Notas |
 | --- | --- | --- | --- |
 | `id` | string | sí | igual al id del documento |
@@ -51,7 +54,7 @@ Inventario compartido. Es la única fuente de precios vigentes.
 | `descripcion` | string | no | detalle del material; sale en el PDF y en el reporte de materiales |
 | `unidad` | string | sí | `unidad` \| `bulto` \| `m2` \| `m3` \| `kg` \| `ml` |
 | `precio` | number | sí | COP sin decimales |
-| `stock` | number | sí | |
+| `stock` | number | sí | baja al aceptar una cotización y vuelve a subir si se revierte el estado o se elimina; puede quedar negativo si no alcanzaba (la app avisa) |
 | `stockMinimo` | number | sí | por debajo de este valor la app marca "Stock bajo" |
 | `activo` | boolean | sí | `false` lo oculta del buscador sin borrar el histórico |
 | `actualizado` | string ISO | sí | |
@@ -107,6 +110,7 @@ suyas; el administrador ve todos.
 | `vendedor` | string | sí | nombre mostrado en el PDF |
 | `vendedorUid` | string \| null | sí | `uid` dueño de la cotización; las reglas y las consultas se basan en él |
 | `pago` | objeto \| null | no | soporte del cobro cuando la cotización pasa a `Aceptada`: `{ fecha, metodo, monto, referencia, notas, registradoPor }`. Una cotización aceptada cuenta como pagada |
+| `stockDescontado` | boolean | no | `true` mientras las cantidades de la cotización están descontadas del inventario; evita descontar dos veces y permite devolverlas si se revierte el estado. Las cotizaciones anteriores a esta versión no lo traen y nunca movieron stock |
 | `autorizacionEdicion` | objeto \| null | sí | `{ por, uid, fecha }` que registra la autorización del administrador para editar una cotización ajena |
 | `creada` | string ISO | sí | |
 | `emitida` | string ISO \| null | sí | fecha de generación; `null` en borradores |
@@ -150,6 +154,7 @@ Ejemplo:
   "estado": "Enviada",
   "vendedor": "Vendedor Demo",
   "vendedorUid": "AbC123...",
+  "stockDescontado": false,
   "autorizacionEdicion": null,
   "creada": "2026-09-13T12:00:00.000Z",
   "emitida": "2026-09-13T12:30:00.000Z",
@@ -207,7 +212,7 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 
 | Colección | Administrador | Vendedor |
 | --- | --- | --- |
-| `materiales` | leer y escribir | solo leer |
+| `materiales` | leer y escribir | leer; al aceptar o revertir una cotización puede cambiar únicamente `stock` y `actualizado` |
 | `clientes` | leer, crear, editar y eliminar | leer; crear y editar los propios (`creadoPor` = su uid); no eliminar |
 | `cotizaciones` | leer todas, editar y eliminar | solo las propias (`vendedorUid` = su uid) |
 | `config/empresa` y `config/ia` | leer y escribir | solo leer |
