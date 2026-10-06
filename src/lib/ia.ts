@@ -85,7 +85,7 @@ const MAX_MATERIALES = 120
 const catalogo = (materiales: Material[]): string =>
   materiales
     .slice(0, MAX_MATERIALES)
-    .map((m) => `${m.codigo} | ${m.nombre} | ${m.unidad} | ${m.precio}`)
+    .map((m) => `${m.codigo} | ${m.nombre} | ${m.unidad} | ${m.precio} | stock ${m.stock}`)
     .join('\n')
 
 const instruccion = (materiales: Material[]): string => `
@@ -102,9 +102,14 @@ Reglas:
 - Cierra SIEMPRE con una sección exactamente así, una línea por material y sin texto extra:
 
 MATERIALES SUGERIDOS
-CODIGO x CANTIDAD
+CODIGO x CANTIDAD | nombre del material
+NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
 
-Catálogo disponible (código | nombre | unidad | precio COP):
+- En esa sección usa el CODIGO tal como aparece en el catálogo; nunca inventes códigos.
+- Si el proyecto necesita un material que NO está en el catálogo, inclúyelo igual en la lista con
+  el código literal NO-DISPONIBLE, para que el vendedor sepa qué debe conseguir aparte.
+
+Catálogo disponible (código | nombre | unidad | precio COP | stock):
 ${catalogo(materiales)}
 `.trim()
 
@@ -169,24 +174,52 @@ export async function preguntarIA(
 
 export type Sugerencia = { material: Material; cantidad: number }
 
-/**
- * Extrae las líneas `CODIGO x CANTIDAD` del cierre de la respuesta y las cruza con el
- * inventario, para poder pasarlas a la cotización con un clic.
- */
-export function sugerencias(texto: string, materiales: Material[]): Sugerencia[] {
-  const porCodigo = new Map(materiales.map((m) => [m.codigo.toUpperCase(), m]))
-  const encontradas = new Map<string, Sugerencia>()
+/** Material que el proyecto necesita y la ferretería no tiene en su inventario. */
+export type NoDisponible = { nombre: string; cantidad: number; unidad: string }
 
-  texto.split('\n').forEach((linea) => {
-    const limpia = linea.replace(/^[-*\s]+/, '').trim()
-    const partido = /^([A-Za-z0-9._-]+)\s*[xX*]\s*([\d.,]+)/.exec(limpia)
+export type Recomendacion = {
+  /** Materiales del inventario, listos para pasar a la cotización. */
+  enInventario: Sugerencia[]
+  noDisponibles: NoDisponible[]
+}
+
+const numero = (texto: string): number => Number(texto.replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'))
+
+/**
+ * Lee las líneas `CODIGO x CANTIDAD | nombre` del cierre de la respuesta: las que traen un código
+ * del catálogo se pueden pasar a la cotización con un clic, y las demás quedan como material que
+ * hay que conseguir fuera del inventario.
+ */
+export function recomendacion(texto: string, materiales: Material[]): Recomendacion {
+  const porCodigo = new Map(materiales.map((m) => [m.codigo.toUpperCase(), m]))
+  const enInventario = new Map<string, Sugerencia>()
+  const noDisponibles = new Map<string, NoDisponible>()
+  const listado = texto.split(/MATERIALES SUGERIDOS/i)[1]
+  if (listado === undefined) return { enInventario: [], noDisponibles: [] }
+
+  listado.split('\n').forEach((linea) => {
+    const limpia = linea.replace(/^[-*\s]+/, '').replace(/\*\*/g, '').trim()
+    const partido = /^([A-Za-z0-9._-]+)\s*[xX*]\s*([\d.,]+)\s*([^|]*)\|?\s*(.*)$/.exec(limpia)
     if (partido === null) return
-    const material = porCodigo.get(partido[1].toUpperCase())
-    if (material === undefined) return
-    const cantidad = Number(partido[2].replace(',', '.'))
+
+    const cantidad = numero(partido[2])
     if (!Number.isFinite(cantidad) || cantidad <= 0) return
-    encontradas.set(material.id, { material, cantidad })
+
+    const material = porCodigo.get(partido[1].toUpperCase())
+    if (material !== undefined) {
+      enInventario.set(material.id, { material, cantidad })
+      return
+    }
+
+    const unidad = partido[3].trim()
+    const nombre = partido[4].trim() === '' ? unidad : partido[4].trim()
+    if (nombre === '') return
+    noDisponibles.set(nombre.toLowerCase(), {
+      nombre,
+      cantidad,
+      unidad: nombre === unidad ? '' : unidad,
+    })
   })
 
-  return [...encontradas.values()]
+  return { enInventario: [...enInventario.values()], noDisponibles: [...noDisponibles.values()] }
 }

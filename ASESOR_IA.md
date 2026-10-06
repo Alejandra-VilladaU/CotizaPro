@@ -47,11 +47,14 @@ Function que haga de intermediaria; el resto del módulo no cambia.
 
   ```
   MATERIALES SUGERIDOS
-  CODIGO x CANTIDAD
+  CODIGO x CANTIDAD | nombre del material
+  NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
   ```
 
-  `sugerencias()` cruza esas líneas con el inventario y la página muestra cada material con su
-  precio y un botón **Agregar**, más el total estimado.
+  `recomendacion()` cruza esas líneas con el inventario y la página muestra dos grupos: los
+  materiales del catálogo con su precio, la cantidad sugerida editable y un botón **Agregar**
+  (avisa si la cantidad supera el stock), y los que la ferretería no tiene, marcados como
+  **Falta** para conseguirlos aparte o cargarlos al inventario.
 - La conversación vive solo en memoria: al salir de la página no se guarda nada en Firestore.
 
 ## Permisos
