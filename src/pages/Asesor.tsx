@@ -8,11 +8,11 @@ import {
   leerConfigIA,
   leerImagen,
   preguntarIA,
-  sugerencias,
+  recomendacion,
   type Adjunto,
   type ConfigIA,
   type Mensaje,
-  type Sugerencia,
+  type Recomendacion,
 } from '../lib/ia'
 import { useDatos } from '../lib/store'
 
@@ -56,46 +56,98 @@ function Burbuja({ mensaje }: { mensaje: Mensaje }) {
   )
 }
 
-function Sugerencias({ lista }: { lista: Sugerencia[] }) {
+function Sugerencias({ lista }: { lista: Recomendacion }) {
   const { agregarMaterial } = useDatos()
   const { puede } = useAuth()
+  const [cantidades, setCantidades] = useState<Record<string, number>>({})
   const [agregados, setAgregados] = useState<string[]>([])
-  if (lista.length === 0) return null
+  if (lista.enInventario.length === 0 && lista.noDisponibles.length === 0) return null
 
-  const total = lista.reduce((acc, s) => acc + s.material.precio * s.cantidad, 0)
+  const cantidadDe = ({ material, cantidad }: Recomendacion['enInventario'][number]): number =>
+    cantidades[material.id] ?? cantidad
+  const total = lista.enInventario.reduce((acc, s) => acc + s.material.precio * cantidadDe(s), 0)
 
   return (
     <Card className="mt-2 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <Etiqueta>Materiales del inventario para este proyecto</Etiqueta>
-        <span className="text-sm font-extrabold text-navy">{cop(total)}</span>
-      </div>
-      <div className="mt-2 space-y-1.5">
-        {lista.map(({ material, cantidad }) => (
-          <div key={material.id} className="flex items-center gap-2 text-sm">
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-semibold text-navy">{material.nombre}</div>
-              <div className="text-xs text-muted">
-                {material.codigo} · {cantidad} × {cop(material.precio)}
-              </div>
-            </div>
-            {puede('cotizaciones.crear') && (
-              <Boton
-                tamano="sm"
-                variante={agregados.includes(material.id) ? 'secundario' : 'primario'}
-                disabled={agregados.includes(material.id)}
-                onClick={() => {
-                  agregarMaterial(material.id, cantidad)
-                  setAgregados((a) => [...a, material.id])
-                }}
-              >
-                {agregados.includes(material.id) ? 'Agregado' : 'Agregar'}
-              </Boton>
-            )}
+      {lista.enInventario.length > 0 && (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <Etiqueta>Materiales del inventario para este proyecto</Etiqueta>
+            <span className="text-sm font-extrabold text-navy">{cop(total)}</span>
           </div>
-        ))}
-      </div>
-      {puede('cotizaciones.crear') && (
+          <div className="mt-2 space-y-2">
+            {lista.enInventario.map((sugerencia) => {
+              const { material } = sugerencia
+              const cantidad = cantidadDe(sugerencia)
+              const agregado = agregados.includes(material.id)
+              return (
+                <div key={material.id} className="flex items-center gap-2 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold text-navy">{material.nombre}</div>
+                    <div className="text-xs text-muted">
+                      {material.codigo} · {cop(material.precio)} / {material.unidad} ·{' '}
+                      {cop(material.precio * cantidad)}
+                    </div>
+                    {cantidad > material.stock && (
+                      <div className="text-xs font-semibold text-warn">
+                        Solo hay {material.stock} {material.unidad} en inventario
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={cantidad}
+                    aria-label={`Cantidad de ${material.nombre}`}
+                    disabled={agregado}
+                    onChange={(e) =>
+                      setCantidades((c) => ({ ...c, [material.id]: Number(e.target.value) }))
+                    }
+                    className="h-9 w-16 rounded-lg border border-line px-2 text-center text-[15px] font-extrabold text-navy outline-none focus:border-blue disabled:bg-surface disabled:text-muted"
+                  />
+                  {puede('cotizaciones.crear') && (
+                    <Boton
+                      tamano="sm"
+                      variante={agregado ? 'secundario' : 'primario'}
+                      disabled={agregado || cantidad <= 0}
+                      onClick={() => {
+                        agregarMaterial(material.id, cantidad)
+                        setAgregados((a) => [...a, material.id])
+                      }}
+                    >
+                      {agregado ? 'Agregado' : 'Agregar'}
+                    </Boton>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {lista.noDisponibles.length > 0 && (
+        <div className={lista.enInventario.length > 0 ? 'mt-3 border-t border-line pt-3' : ''}>
+          <Etiqueta>No está en el inventario de la ferretería</Etiqueta>
+          <ul className="mt-2 space-y-1.5">
+            {lista.noDisponibles.map((f) => (
+              <li key={f.nombre} className="flex items-center gap-2 text-sm">
+                <Badge tono="warn">Falta</Badge>
+                <span className="min-w-0 flex-1 truncate font-semibold text-navy">{f.nombre}</span>
+                <span className="shrink-0 text-xs text-muted">
+                  {f.cantidad} {f.unidad}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">
+            Estos materiales no se pueden cotizar: consíguelos aparte o pídele al administrador que
+            los cargue al inventario.
+          </p>
+        </div>
+      )}
+
+      {puede('cotizaciones.crear') && lista.enInventario.length > 0 && (
         <Link
           to="/cotizacion"
           className="mt-3 block rounded-[10px] bg-navy px-4 py-2.5 text-center text-sm font-bold text-white"
@@ -131,8 +183,8 @@ export default function Asesor() {
   const recomendados = useMemo(
     () =>
       ultima === undefined || ultima.autor !== 'asesor'
-        ? []
-        : sugerencias(ultima.texto, materialesActivos),
+        ? { enInventario: [], noDisponibles: [] }
+        : recomendacion(ultima.texto, materialesActivos),
     [ultima, materialesActivos],
   )
 
@@ -223,7 +275,7 @@ export default function Asesor() {
         {mensajes.map((m) => (
           <Burbuja key={m.id} mensaje={m} />
         ))}
-        {recomendados.length > 0 && !pensando && <Sugerencias lista={recomendados} />}
+        {!pensando && <Sugerencias key={ultima?.id} lista={recomendados} />}
         {pensando && (
           <div className="flex items-center gap-2 text-sm text-muted">
             <Badge tono="blue">Asesor</Badge>
