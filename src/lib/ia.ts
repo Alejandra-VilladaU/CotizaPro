@@ -88,10 +88,24 @@ const catalogo = (materiales: Material[]): string =>
     .map((m) => `${m.codigo} | ${m.nombre} | ${m.unidad} | ${m.precio} | stock ${m.stock}`)
     .join('\n')
 
+/** Respuesta fija para lo que queda fuera del alcance; la app usa el mismo texto al bloquear. */
+export const FUERA_DE_ALCANCE =
+  'Solo puedo asesorarte en proyectos de construcción, remodelación y carpintería, y en los materiales de la ferretería.'
+
 const instruccion = (materiales: Material[]): string => `
 Eres el asesor técnico de CotizaPro, una app de cotización de materiales de construcción y
 carpintería en Colombia. Ayudas a vendedores y administradores a diseñar proyectos (muebles de
 cocina, mesas, closets, obras menores) y a calcular los materiales necesarios.
+
+Alcance: solo construcción, remodelación, carpintería, ferretería y el uso de los materiales del
+catálogo. Si la consulta es de otro tema (geografía, salud, tareas escolares, política,
+programación, recetas, texto general), responde ÚNICAMENTE esta frase, sin añadir nada más ni la
+sección de materiales: "${FUERA_DE_ALCANCE}"
+
+No das precios de proveedores externos, descuentos ni condiciones comerciales, y no conoces los
+clientes, usuarios ni cotizaciones del sistema: solo ves el catálogo de abajo. Si el proyecto
+implica cálculo estructural (vigas, columnas, cimentaciones) o instalaciones de gas, advierte que
+debe validarlo un profesional.
 
 Reglas:
 - Responde siempre en español, claro y breve, con pasos numerados y medidas concretas en cm.
@@ -99,7 +113,8 @@ Reglas:
 - Calcula cantidades explicando el criterio (área, perímetro, número de piezas, desperdicio).
 - Recomienda materiales del catálogo de abajo cuando existan; si falta algo, dilo con claridad.
 - Los precios son en pesos colombianos y son de referencia.
-- Cierra SIEMPRE con una sección exactamente así, una línea por material y sin texto extra:
+- Cuando la consulta sí sea del alcance, cierra SIEMPRE con una sección exactamente así, una
+  línea por material y sin texto extra:
 
 MATERIALES SUGERIDOS
 CODIGO x CANTIDAD | nombre del material
@@ -170,6 +185,63 @@ export async function preguntarIA(
   if (texto === undefined || texto.trim() === '')
     throw new Error('El asesor respondió vacío. Reformula la pregunta.')
   return texto
+}
+
+const sinTildes = (texto: string): string =>
+  texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+/**
+ * Vocabulario del negocio: obra, carpintería, ferretería y la operación de CotizaPro. Es
+ * deliberadamente amplio, porque rechazar una consulta legítima molesta más que dejar pasar una
+ * dudosa: el prompt la rechaza igual del otro lado.
+ */
+const PALABRAS_DOMINIO = sinTildes(
+  `construccion construir obra remodelacion remodelar reforma reparar arreglar instalar instalacion
+   montar armar ensamblar cortar fundir pegar sellar pintar lijar soldar excavar
+   carpinteria ebanisteria albanil plomeria electricidad ferreteria herramienta taladro sierra
+   mueble muebles cocina closet mesa escritorio biblioteca repisa estante cajon puerta porton
+   ventana marco baranda escalera reja division fachada piso pisos enchape baldosa ceramica
+   porcelanato guardaescoba muro muros pared paredes techo cielo cubierta teja columna viga losa
+   cimiento placa bano banos lavamanos sanitario ducha griferia lavaplatos meson
+   cemento concreto mortero arena gravilla triturado ladrillo bloque adoquin varilla malla
+   hierro acero aluminio lamina madera aglomerado triplex formica melamina tablero liston
+   tornillo tornillos clavo clavos puntilla bisagra chapa cerradura riel perfil angulo platina
+   tubo tuberia codo union llave cable alambre interruptor toma breaker luminaria bombillo
+   pintura esmalte vinilo estuco masilla barniz laca sellante silicona pegante impermeabilizante
+   drywall superboard yeso icopor lija disco broca guante casco
+   humedad gotera goteras filtracion acabado medida medidas metro metros area perimetro
+   cantidad cantidades rendimiento desperdicio
+   material materiales insumo insumos inventario stock catalogo precio precios costo presupuesto
+   cotizar cotizacion cotizaciones proyecto cliente`,
+)
+  .split(/\s+/)
+  .filter((p) => p.length > 2)
+
+/**
+ * Filtro local: evita gastar cuota de Gemini y responder cosas ajenas al negocio. Deja pasar lo
+ * que menciona el dominio o algún material del catálogo, los mensajes con imagen (una foto o un
+ * plano es por definición del proyecto) y los seguimientos cortos de una conversación ya abierta
+ * ("¿y si la hago de 3 m?").
+ */
+export function esConsultaDelNegocio(
+  texto: string,
+  materiales: Material[],
+  seguimiento: boolean,
+): boolean {
+  const palabras = sinTildes(texto)
+    .split(/[^a-z0-9]+/)
+    .filter((p) => p !== '')
+  if (palabras.length === 0) return true
+
+  const delCatalogo = new Set(
+    materiales.flatMap((m) =>
+      sinTildes(`${m.nombre} ${m.categoria}`)
+        .split(/[^a-z0-9]+/)
+        .filter((p) => p.length > 3),
+    ),
+  )
+  if (palabras.some((p) => PALABRAS_DOMINIO.includes(p) || delCatalogo.has(p))) return true
+  return seguimiento && palabras.length <= 8
 }
 
 export type Sugerencia = { material: Material; cantidad: number }
