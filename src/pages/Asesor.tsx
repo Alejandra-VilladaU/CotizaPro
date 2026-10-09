@@ -5,6 +5,8 @@ import { Badge, Banner, Boton, Card, Etiqueta, Vacio } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { cop } from '../lib/format'
 import {
+  esConsultaDelNegocio,
+  FUERA_DE_ALCANCE,
   leerConfigIA,
   leerImagen,
   preguntarIA,
@@ -200,6 +202,19 @@ export default function Asesor() {
     setTexto('')
     setAdjuntos([])
     setError(null)
+
+    // Lo ajeno al negocio ni se envía: ahorra cuota de Gemini y deja claro el alcance.
+    const delNegocio =
+      adjuntos.length > 0 ||
+      esConsultaDelNegocio(texto, materialesActivos, mensajes.some((m) => m.autor === 'asesor'))
+    if (!delNegocio) {
+      setMensajes((m) => [
+        ...m,
+        { id: nuevoId(), autor: 'asesor', texto: FUERA_DE_ALCANCE, adjuntos: [] },
+      ])
+      return
+    }
+
     setPensando(true)
     try {
       const respuesta = await preguntarIA(config, historial, materialesActivos)
@@ -228,7 +243,8 @@ export default function Asesor() {
           </h1>
           <p className="mt-0.5 text-sm text-muted">
             Pregunta cómo construir un mueble u obra, adjunta fotos o dibujos y pasa los
-            materiales a la cotización.
+            materiales a la cotización. Solo responde temas de construcción, remodelación,
+            carpintería y los materiales de la ferretería.
           </p>
         </div>
         {mensajes.length > 0 && (

@@ -57,6 +57,30 @@ Function que haga de intermediaria; el resto del módulo no cambia.
   **Falta** para conseguirlos aparte o cargarlos al inventario.
 - La conversación vive solo en memoria: al salir de la página no se guarda nada en Firestore.
 
+## Alcance del asesor
+
+**Sí responde:** diseño y dimensionamiento de proyectos de construcción, remodelación y
+carpintería; cálculo de cantidades (área, perímetro, piezas, desperdicio); lectura de fotos,
+planos o dibujos; uso, rendimiento e instalación de los materiales; y recomendación de materiales
+del catálogo.
+
+**No responde:** temas ajenos al negocio (geografía, salud, tareas escolares, política,
+programación, texto general); precios de proveedores externos, descuentos o condiciones
+comerciales; y datos de clientes, usuarios o cotizaciones, porque solo ve el catálogo. Ante un
+cálculo estructural (vigas, columnas, cimentaciones) o instalaciones de gas, advierte que lo
+valide un profesional.
+
+El bloqueo tiene dos capas:
+
+1. `esConsultaDelNegocio()` filtra en la app y ni siquiera envía la consulta —ahorra cuota— salvo
+   que mencione vocabulario del dominio o un material del catálogo, traiga una imagen, o sea un
+   seguimiento corto de una conversación ya abierta ("¿y si la hago de 3 m?").
+2. La instrucción de sistema obliga a Gemini a responder solo la frase de `FUERA_DE_ALCANCE` ante
+   cualquier otro tema, sin lista de materiales.
+
+Es un filtro por prompt, no un bloqueo externo: cubre el uso normal, pero alguien insistiendo
+puede sacar al modelo de tema.
+
 ## Permisos
 
 Se agregó el permiso `asesor.ia`:
