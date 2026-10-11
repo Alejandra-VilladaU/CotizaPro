@@ -98,6 +98,11 @@ real, sigue [FIREBASE.md](./FIREBASE.md): crear el proyecto, habilitar Email/Pas
 en [FIRESTORE.md](./FIRESTORE.md); el catálogo inicial se carga desde **Ajustes → Almacenamiento
 de los datos**.
 
+## Uso local
+
+Para instalarla y usarla en tu propio computador (modo demo, conectada a tu Firebase o compartida
+en la red del negocio), ver **[LOCAL.md](./LOCAL.md)**.
+
 ## Despliegue
 
 Para publicar desde GitHub con HTTPS y dominio gratis (Firebase Hosting o Vercel, con deploy
