@@ -257,12 +257,16 @@ async function generar(
 }
 
 /** Reintenta con espera mientras Google responda que el modelo está saturado. */
-async function conReintentos(intento: () => Promise<string>): Promise<string> {
-  for (const espera of ESPERAS) {
+async function conReintentos(
+  intento: () => Promise<string>,
+  avisar: (aviso: string) => void,
+): Promise<string> {
+  for (const [i, espera] of ESPERAS.entries()) {
     try {
       return await intento()
     } catch (e) {
       if (!(e instanceof ErrorGemini) || !PASAJERO.has(e.estado)) throw e
+      avisar(`Gemini está con mucha demanda; reintentando (${i + 2} de ${ESPERAS.length + 1})…`)
       await esperar(espera)
     }
   }
@@ -272,17 +276,23 @@ async function conReintentos(intento: () => Promise<string>): Promise<string> {
 /**
  * Pregunta al modelo configurado y, si sigue saturado tras los reintentos, a otros modelos
  * "flash" disponibles para la clave. Los errores de clave, cuota o permisos no se reintentan.
+ * `avisar` informa a la página qué está pasando mientras tanto.
  */
 export async function preguntarIA(
   config: ConfigIA,
   historial: Mensaje[],
   materiales: Material[],
+  avisar: (aviso: string) => void = () => {},
 ): Promise<string> {
   try {
-    return await conReintentos(() => generar(config, config.modelo, historial, materiales))
+    return await conReintentos(
+      () => generar(config, config.modelo, historial, materiales),
+      avisar,
+    )
   } catch (e) {
     if (!(e instanceof ErrorGemini) || !PASAJERO.has(e.estado)) throw e
     for (const modelo of await modelosAlternos(config)) {
+      avisar(`El modelo principal sigue saturado; probando con ${modelo}…`)
       try {
         return await generar(config, modelo, historial, materiales)
       } catch (otro) {

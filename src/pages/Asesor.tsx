@@ -38,6 +38,53 @@ const SIN_RECOMENDACION: Recomendacion = {
 const vacio = (g: GrupoMateriales): boolean =>
   g.enInventario.length === 0 && g.noDisponibles.length === 0
 
+const PASOS = [
+  'Leyendo tu consulta…',
+  'Analizando el proyecto…',
+  'Calculando medidas y cantidades…',
+  'Buscando los materiales en el inventario…',
+  'Eligiendo complementarios para el acabado…',
+  'Armando la respuesta…',
+]
+
+/** Indicador de espera: puntos animados, pasos que avanzan y segundos transcurridos. */
+function Pensando({ conImagen, aviso }: { conImagen: boolean; aviso: string | null }) {
+  const [segundos, setSegundos] = useState(0)
+  useEffect(() => {
+    const reloj = setInterval(() => setSegundos((s) => s + 1), 1000)
+    return () => clearInterval(reloj)
+  }, [])
+
+  const pasos = conImagen ? ['Revisando la imagen adjunta…', ...PASOS] : PASOS
+  const paso = pasos[Math.min(Math.floor(segundos / 3), pasos.length - 1)]
+
+  return (
+    <div className="flex justify-start" role="status" aria-live="polite">
+      <div className="flex max-w-[85%] items-start gap-3 rounded-[14px] border border-line bg-white px-4 py-3 text-sm text-navy lg:max-w-[75%]">
+        <Sparkles size={18} className="mt-0.5 shrink-0 animate-pulse text-blue" aria-hidden />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 font-semibold">
+            <span>El asesor está pensando</span>
+            <span className="flex gap-1" aria-hidden>
+              {[0, 150, 300].map((retraso) => (
+                <span
+                  key={retraso}
+                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue"
+                  style={{ animationDelay: `${retraso}ms` }}
+                />
+              ))}
+            </span>
+          </div>
+          <div className="mt-0.5 text-xs text-muted">
+            {paso} · {segundos} s
+          </div>
+          {aviso !== null && <div className="mt-1 text-xs font-semibold text-warn">{aviso}</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Burbuja({ mensaje }: { mensaje: Mensaje }) {
   const mia = mensaje.autor === 'usuario'
   return (
@@ -233,6 +280,7 @@ export default function Asesor() {
   const [texto, setTexto] = useState('')
   const [adjuntos, setAdjuntos] = useState<Adjunto[]>([])
   const [pensando, setPensando] = useState(false)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const archivo = useRef<HTMLInputElement>(null)
   const fin = useRef<HTMLDivElement>(null)
@@ -243,7 +291,7 @@ export default function Asesor() {
 
   useEffect(() => {
     fin.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [mensajes, pensando])
+  }, [mensajes, pensando, aviso])
 
   const ultima = mensajes.at(-1)
   const recomendados = useMemo(
@@ -280,8 +328,9 @@ export default function Asesor() {
     }
 
     setPensando(true)
+    setAviso(null)
     try {
-      const respuesta = await preguntarIA(config, historial, materialesActivos)
+      const respuesta = await preguntarIA(config, historial, materialesActivos, setAviso)
       setMensajes((m) => [...m, { id: nuevoId(), autor: 'asesor', texto: respuesta, adjuntos: [] }])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'El asesor no está disponible.')
@@ -357,10 +406,7 @@ export default function Asesor() {
         ))}
         {!pensando && <Sugerencias key={ultima?.id} lista={recomendados} />}
         {pensando && (
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <Badge tono="blue">Asesor</Badge>
-            Analizando tu proyecto…
-          </div>
+          <Pensando conImagen={(ultima?.adjuntos.length ?? 0) > 0} aviso={aviso} />
         )}
         <div ref={fin} />
       </div>
