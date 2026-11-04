@@ -31,6 +31,7 @@ import {
   vence,
 } from '../lib/quote'
 import { useDatos } from '../lib/store'
+import { AYUDA_DUPLICAR_BORRADOR, useDuplicar } from '../lib/useDuplicar'
 import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
 
 export const ULTIMA_ABIERTA = 'cotizapro.ultimaAbierta'
@@ -251,8 +252,8 @@ export default function CotizacionPage() {
     puedeEditar,
     autorizarEdicion,
     esPropia,
-    duplicar,
   } = useDatos()
+  const duplicarConControl = useDuplicar()
   const { puede, usuario } = useAuth()
   const { id } = useParams()
   const navigate = useNavigate()
@@ -371,8 +372,13 @@ export default function CotizacionPage() {
           {puede('cotizaciones.crear') && (
             <Boton
               tamano="sm"
-              title="Crea un borrador nuevo con los mismos materiales y datos del proyecto"
-              onClick={() => navigate(`/cotizacion/${duplicar(actual.id)}`)}
+              disabled={actual.estado === 'Borrador'}
+              title={
+                actual.estado === 'Borrador'
+                  ? AYUDA_DUPLICAR_BORRADOR
+                  : 'Crea un borrador nuevo con los mismos materiales y datos del proyecto'
+              }
+              onClick={() => duplicarConControl(actual)}
             >
               <Copy size={15} /> Duplicar
             </Boton>

@@ -7,6 +7,7 @@ import { exportarDetalle } from '../lib/export'
 import { cop, copCorto, fecha, iniciales } from '../lib/format'
 import { calcularTotales, referencia } from '../lib/quote'
 import { useDatos } from '../lib/store'
+import { AYUDA_DUPLICAR_BORRADOR, useDuplicar } from '../lib/useDuplicar'
 import type { EstadoCotizacion } from '../lib/types'
 
 const TONO = {
@@ -22,7 +23,8 @@ const FILTROS: (EstadoCotizacion | 'Todas')[] = ['Todas', 'Enviada', 'Aceptada',
 export default function ClienteDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { cliente, cotizacionesDeCliente, crearBorrador, duplicar, datos } = useDatos()
+  const { cliente, cotizacionesDeCliente, crearBorrador, datos } = useDatos()
+  const duplicarConControl = useDuplicar()
   const { puede } = useAuth()
   const [filtro, setFiltro] = useState<EstadoCotizacion | 'Todas'>('Todas')
 
@@ -154,10 +156,9 @@ export default function ClienteDetalle() {
                     {puede('cotizaciones.crear') && (
                       <Boton
                         tamano="sm"
-                        onClick={() => {
-                          duplicar(c.id)
-                          navigate('/cotizacion')
-                        }}
+                        disabled={c.estado === 'Borrador'}
+                        title={c.estado === 'Borrador' ? AYUDA_DUPLICAR_BORRADOR : undefined}
+                        onClick={() => duplicarConControl(c)}
                       >
                         Duplicar
                       </Boton>

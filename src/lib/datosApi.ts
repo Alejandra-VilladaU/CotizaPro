@@ -40,6 +40,8 @@ export type BackendDatos = {
    * contador. Devuelve `null` cuando no hay contador compartido (modo local).
    */
   siguienteNumero: (minimo: number) => Promise<number | null>
+  /** Reserva el siguiente consecutivo de borrador (BOR-001…); null en modo demo. */
+  siguienteBorrador: (minimo: number) => Promise<number | null>
   /** Sube el contador compartido si quedó por debajo de los números ya emitidos. */
   sincronizarConsecutivo: (minimo: number) => Promise<void>
   /** Borra los datos de negocio (no toca los perfiles de usuario). */
@@ -61,6 +63,7 @@ export const backendLocalDatos = (): BackendDatos => ({
   eliminarCotizacion: nada,
   guardarEmpresa: nada,
   siguienteNumero: async () => null,
+  siguienteBorrador: async () => null,
   sincronizarConsecutivo: nada,
   vaciar: nada,
 })

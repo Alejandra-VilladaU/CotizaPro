@@ -10,6 +10,7 @@ import { cop, copCorto, diasRestantes, fecha, fechaCorta } from '../lib/format'
 import { mensajeFaltantes } from '../lib/inventario'
 import { calcularTotales, mensajeWhatsApp, referencia, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
+import { AYUDA_DUPLICAR_BORRADOR, useDuplicar } from '../lib/useDuplicar'
 import type { Cotizacion, EstadoCotizacion } from '../lib/types'
 import { ULTIMA_ABIERTA } from './Cotizacion'
 
@@ -55,7 +56,6 @@ export default function Cotizaciones() {
   const {
     datos,
     cliente,
-    duplicar,
     cambiarEstado,
     eliminarCotizacion,
     crearBorrador,
@@ -66,6 +66,7 @@ export default function Cotizaciones() {
   } = useDatos()
   const { puede, verTodo } = useAuth()
   const navigate = useNavigate()
+  const duplicarConControl = useDuplicar()
   // Los filtros viven en la URL: al volver de una cotización la lista queda como estaba.
   const [params, setParams] = useSearchParams()
   const filtro = (clave: string, defecto: string) => params.get(clave) ?? defecto
@@ -390,7 +391,9 @@ export default function Cotizaciones() {
                           {puede('cotizaciones.crear') && (
                             <Boton
                               tamano="sm"
-                              onClick={() => navigate(`/cotizacion/${duplicar(c.id)}`)}
+                              disabled={c.estado === 'Borrador'}
+                              title={c.estado === 'Borrador' ? AYUDA_DUPLICAR_BORRADOR : undefined}
+                              onClick={() => duplicarConControl(c)}
                             >
                               Duplicar
                             </Boton>

@@ -113,7 +113,13 @@ type Contexto = {
   cambiarEstado: (id: string, estado: Cotizacion['estado']) => Faltante[]
   /** Registra el pago de una cotización, la deja como Aceptada y descuenta el inventario. */
   registrarPago: (id: string, pago: Omit<Pago, 'registradoPor'>) => Faltante[]
-  duplicar: (id: string) => string
+  /**
+   * Crea un borrador copiando una cotización ya generada. Devuelve null si el origen sigue en
+   * borrador; si ya hay una copia sin generar de ese origen, devuelve esa en vez de otra nueva.
+   */
+  duplicar: (id: string) => string | null
+  /** Borrador propio, aún sin generar, que se copió de esa cotización. */
+  copiaPendiente: (id: string) => Cotizacion | undefined
   /** Guarda en el borrador en curso la asesoría de la que salieron sus materiales. */
   adjuntarAsesoria: (asesoria: Asesoria) => void
   eliminarCotizacion: (id: string) => void
@@ -294,7 +300,29 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         borradorId: nueva.id,
       }))
       guardarCotizacion(nueva)
+      void reservarBorrador(nueva.id)
       return nueva
+    }
+
+    // Igual que el número de cotización, el consecutivo de borrador se reserva en Firestore
+    // porque cada vendedor solo ve sus borradores; el máximo local es el respaldo en modo demo.
+    const reservarBorrador = async (id: string): Promise<void> => {
+      const maximo = ref.current.cotizaciones.reduce(
+        (acc, c) => Math.max(acc, c.consecutivoBorrador ?? 0),
+        0,
+      )
+      const reservado = await backend.siguienteBorrador(maximo).catch(() => null)
+      const consecutivo = reservado ?? maximo + 1
+      mapear(id, (c) => ({ ...c, consecutivoBorrador: c.consecutivoBorrador ?? consecutivo }))
+    }
+
+    const copiaPendiente = (id: string): Cotizacion | undefined => {
+      const origen = cotizacion(id)
+      if (origen === undefined || origen.numero === null) return undefined
+      const ref_ = referencia(origen)
+      return ref.current.cotizaciones.find(
+        (c) => c.estado === 'Borrador' && c.duplicadaDe === ref_ && esPropia(c),
+      )
     }
 
     const asegurarBorrador = (): Cotizacion => {
@@ -504,14 +532,22 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         return faltantes
       },
 
+      copiaPendiente,
+
       duplicar: (id) => {
         const origen = cotizacion(id)
-        if (origen === undefined) return id
+        if (origen === undefined || origen.estado === 'Borrador') return null
+        const pendiente = copiaPendiente(id)
+        if (pendiente !== undefined) {
+          aplicar((d) => ({ ...d, borradorId: pendiente.id }))
+          return pendiente.id
+        }
         const ahora = new Date().toISOString()
         const copia: Cotizacion = {
           ...origen,
           id: nuevoId('Q'),
           numero: null,
+          consecutivoBorrador: null,
           estado: 'Borrador',
           vendedor: usuario?.nombre ?? origen.vendedor,
           vendedorUid: usuario?.uid ?? origen.vendedorUid ?? null,
@@ -532,6 +568,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
           borradorId: copia.id,
         }))
         guardarCotizacion(copia)
+        void reservarBorrador(copia.id)
         return copia.id
       },
 
