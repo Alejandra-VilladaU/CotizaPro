@@ -186,8 +186,11 @@ const MAX_ALTERNOS = 2
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 class ErrorGemini extends Error {
-  constructor(readonly estado: number, mensaje: string) {
+  readonly estado: number
+
+  constructor(estado: number, mensaje: string) {
     super(mensaje)
+    this.estado = estado
   }
 }
 
