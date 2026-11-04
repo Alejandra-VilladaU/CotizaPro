@@ -1,6 +1,6 @@
 import type { jsPDF } from 'jspdf'
 import { UNIDAD_LABEL, cop, fecha } from './format'
-import { calcularTotales, totalLinea, vence } from './quote'
+import { calcularTotales, porCapitulo, referencia, textoPlano, totalLinea, vence } from './quote'
 import type { Cliente, Cotizacion, Empresa, Material } from './types'
 
 const NAVY: [number, number, number] = [4, 36, 76]
@@ -31,7 +31,7 @@ async function logoDataUrl(url: string): Promise<string | null> {
 }
 
 export function nombreArchivo(cotizacion: Cotizacion): string {
-  return `cotizacion-${cotizacion.numero ?? 'borrador'}.pdf`
+  return `cotizacion-${referencia(cotizacion).replace('#', '')}.pdf`
 }
 
 /**
@@ -86,7 +86,7 @@ export async function construirPdf(
 
   texto('COTIZACIÓN', derecha, y + 10, { size: 8, bold: true, color: GRIS, align: 'right' })
   texto(
-    cotizacion.numero === null ? 'Borrador' : `#${cotizacion.numero}`,
+    referencia(cotizacion),
     derecha,
     y + 32,
     { size: 22, bold: true, align: 'right' },
@@ -128,6 +128,36 @@ export async function construirPdf(
   })
   y += 34 + datosCliente.length * 11
 
+  const saltoDePagina = (alto: number) => {
+    if (y + alto <= ALTO - MARGEN - 40) return
+    doc.addPage()
+    y = MARGEN
+  }
+
+  const proyecto = cotizacion.proyecto ?? null
+  if (
+    proyecto !== null &&
+    (proyecto.descripcion.trim() !== '' || proyecto.responsable.trim() !== '')
+  ) {
+    const lineas: string[] =
+      proyecto.descripcion.trim() === ''
+        ? []
+        : doc.splitTextToSize(proyecto.descripcion.trim(), derecha - MARGEN)
+    texto('PROYECTO', MARGEN, y, { size: 8, bold: true, color: GRIS })
+    lineas.forEach((linea, i) => {
+      texto(linea, MARGEN, y + 13 + i * 11, { size: 9, bold: true })
+    })
+    const pie = [
+      `Cliente: ${cliente?.nombre ?? 'Sin cliente'}`,
+      proyecto.responsable.trim() === '' ? '' : `Responsable: ${proyecto.responsable.trim()}`,
+      `Asesor: ${cotizacion.vendedor}`,
+    ]
+      .filter((v) => v !== '')
+      .join(' · ')
+    texto(pie, MARGEN, y + 14 + lineas.length * 11, { size: 8, color: GRIS })
+    y += 28 + lineas.length * 11
+  }
+
   // Tabla de materiales
   doc.setFillColor(...NAVY)
   doc.rect(MARGEN, y, derecha - MARGEN, 20, 'F')
@@ -151,13 +181,15 @@ export async function construirPdf(
   })
   y += 20
 
-  const saltoDePagina = (alto: number) => {
-    if (y + alto <= ALTO - MARGEN - 40) return
-    doc.addPage()
-    y = MARGEN
-  }
+  porCapitulo(cotizacion, materiales).forEach((cap) => {
+    saltoDePagina(48)
+    doc.setFillColor(242, 245, 249)
+    doc.rect(MARGEN, y, derecha - MARGEN, 18, 'F')
+    texto(cap.nombre.toUpperCase(), MARGEN + 8, y + 12, { size: 8, bold: true })
+    texto(cop(cap.subtotal), derecha - 8, y + 12, { size: 8, bold: true, align: 'right' })
+    y += 18
 
-  cotizacion.items.forEach((item) => {
+  cap.items.forEach((item) => {
     const material = materiales.find((m) => m.id === item.materialId || m.codigo === item.codigo)
     const detalle = material?.descripcion ?? ''
     const lineasDetalle = detalle === '' ? [] : doc.splitTextToSize(detalle, 250)
@@ -180,6 +212,7 @@ export async function construirPdf(
     doc.setDrawColor(...LINEA)
     doc.setLineWidth(0.5)
     doc.line(MARGEN, y, derecha, y)
+  })
   })
 
   // Totales
@@ -221,6 +254,36 @@ export async function construirPdf(
       color: GRIS,
     })
     y += 34
+  }
+
+  const asesoria = cotizacion.asesoria ?? null
+  if (asesoria !== null && asesoria.respuesta.trim() !== '') {
+    saltoDePagina(70)
+    y += 16
+    texto('ASESORÍA DEL PROYECTO', MARGEN, y, { size: 8, bold: true, color: AZUL })
+    y += 13
+    const consulta: string[] = doc.splitTextToSize(asesoria.consulta, derecha - MARGEN)
+    consulta.forEach((linea) => {
+      saltoDePagina(12)
+      texto(linea, MARGEN, y, { size: 8.5, bold: true })
+      y += 11
+    })
+    y += 3
+    const detalle: string[] = doc.splitTextToSize(textoPlano(asesoria.respuesta), derecha - MARGEN)
+    detalle.forEach((linea) => {
+      saltoDePagina(11)
+      texto(linea, MARGEN, y, { size: 8 })
+      y += 10
+    })
+    saltoDePagina(14)
+    y += 4
+    texto(
+      'Recomendación de referencia del Asesor de proyectos de CotizaPro: verifica medidas y cantidades en obra.',
+      MARGEN,
+      y,
+      { size: 7.5, color: GRIS },
+    )
+    y += 6
   }
 
   saltoDePagina(80)

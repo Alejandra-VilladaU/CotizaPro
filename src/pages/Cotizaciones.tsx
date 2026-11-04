@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Download, Pencil, Share2 } from 'lucide-react'
 import { Badge, Banner, Boton, Buscador, Card, Chip, Etiqueta, Kpi, Vacio } from '../components/ui'
 import Compartir from '../components/Compartir'
@@ -8,9 +8,10 @@ import { useAuth } from '../lib/auth'
 import { exportarCotizaciones } from '../lib/export'
 import { cop, copCorto, diasRestantes, fecha, fechaCorta } from '../lib/format'
 import { mensajeFaltantes } from '../lib/inventario'
-import { calcularTotales, mensajeWhatsApp, vence } from '../lib/quote'
+import { calcularTotales, mensajeWhatsApp, referencia, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cotizacion, EstadoCotizacion } from '../lib/types'
+import { ULTIMA_ABIERTA } from './Cotizacion'
 
 const TONO = {
   Borrador: 'gris',
@@ -65,10 +66,28 @@ export default function Cotizaciones() {
   } = useDatos()
   const { puede, verTodo } = useAuth()
   const navigate = useNavigate()
-  const [texto, setTexto] = useState('')
-  const [estado, setEstado] = useState<EstadoCotizacion | 'Todos'>('Todos')
-  const [mes, setMes] = useState('Todos')
-  const [vendedor, setVendedor] = useState('Todos')
+  // Los filtros viven en la URL: al volver de una cotización la lista queda como estaba.
+  const [params, setParams] = useSearchParams()
+  const filtro = (clave: string, defecto: string) => params.get(clave) ?? defecto
+  const fijar = (clave: string, valor: string, defecto: string) =>
+    setParams(
+      (p) => {
+        const siguiente = new URLSearchParams(p)
+        if (valor === defecto) siguiente.delete(clave)
+        else siguiente.set(clave, valor)
+        return siguiente
+      },
+      { replace: true },
+    )
+  const texto = filtro('q', '')
+  const setTexto = (v: string) => fijar('q', v, '')
+  const estado = filtro('estado', 'Todos') as EstadoCotizacion | 'Todos'
+  const setEstado = (v: EstadoCotizacion | 'Todos') => fijar('estado', v, 'Todos')
+  const mes = filtro('mes', 'Todos')
+  const setMes = (v: string) => fijar('mes', v, 'Todos')
+  const vendedor = filtro('vendedor', 'Todos')
+  const setVendedor = (v: string) => fijar('vendedor', v, 'Todos')
+  const [resaltada] = useState(() => sessionStorage.getItem(ULTIMA_ABIERTA))
   const [pagoDe, setPagoDe] = useState<Cotizacion | null>(null)
   const [compartirId, setCompartirId] = useState<string | null>(null)
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
@@ -94,10 +113,12 @@ export default function Cotizaciones() {
   }, [cotizacionesVisibles])
 
   const filtradas = conTotales.filter(({ cotizacion: c }) => {
-    const nombre = cliente(c.clienteId)?.nombre ?? ''
     const q = texto.trim().toLowerCase()
     const coincide =
-      q === '' || nombre.toLowerCase().includes(q) || String(c.numero ?? '').includes(q)
+      q === '' ||
+      `${cliente(c.clienteId)?.nombre ?? ''} ${referencia(c)} ${c.proyecto?.descripcion ?? ''}`
+        .toLowerCase()
+        .includes(q)
     return (
       coincide &&
       (estado === 'Todos' || c.estado === estado) &&
@@ -110,6 +131,12 @@ export default function Cotizaciones() {
     conTotales.filter(({ cotizacion }) => filtro(cotizacion)).reduce((acc, x) => acc + x.total, 0)
   const cuenta = (filtro: (c: Cotizacion) => boolean) =>
     conTotales.filter(({ cotizacion }) => filtro(cotizacion)).length
+
+  // Al volver de una cotización, la lista se ubica sobre la que estaba abierta.
+  useEffect(() => {
+    if (resaltada === null) return
+    document.getElementById(`cot-${resaltada}`)?.scrollIntoView({ block: 'center' })
+  }, [resaltada])
 
   const enviadas = cuenta((c) => c.estado === 'Enviada')
   const aceptadas = cuenta((c) => c.estado === 'Aceptada')
@@ -192,7 +219,7 @@ export default function Cotizaciones() {
         <Kpi
           etiqueta="Borradores abiertos"
           valor={String(cuenta((c) => c.estado === 'Borrador'))}
-          detalle="Sin número asignado"
+          detalle="Referencia BOR- hasta generarlas"
         />
       </div>
 
@@ -201,7 +228,7 @@ export default function Cotizaciones() {
           <Buscador
             valor={texto}
             onCambio={setTexto}
-            placeholder="Buscar por número o cliente…"
+            placeholder="Buscar por número, referencia, cliente o proyecto…"
           />
         </div>
         <select
@@ -243,11 +270,16 @@ export default function Cotizaciones() {
         {(estado !== 'Todos' || mes !== 'Todos' || vendedor !== 'Todos') && (
           <Chip
             activo
-            onClick={() => {
-              setEstado('Todos')
-              setMes('Todos')
-              setVendedor('Todos')
-            }}
+            onClick={() =>
+              setParams(
+                (p) => {
+                  const siguiente = new URLSearchParams(p)
+                  ;['estado', 'mes', 'vendedor'].forEach((clave) => siguiente.delete(clave))
+                  return siguiente
+                },
+                { replace: true },
+              )
+            }
           >
             Limpiar filtros
           </Chip>
@@ -270,7 +302,7 @@ export default function Cotizaciones() {
             <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="bg-navy text-left text-[11px] font-bold uppercase tracking-[0.06em] text-white">
-                  <th className="px-4 py-3">#</th>
+                  <th className="px-4 py-3">Referencia</th>
                   <th className="px-3 py-3">Cliente</th>
                   <th className="px-3 py-3 text-right">Ítems</th>
                   <th className="px-3 py-3 text-right">Total</th>
@@ -285,14 +317,25 @@ export default function Cotizaciones() {
                   const cli = cliente(c.clienteId)
                   const dias = diasRestantes(vence(c))
                   return (
-                    <tr key={c.id} className="border-b border-line last:border-b-0">
-                      <td className="px-4 py-3">
+                    <tr
+                      key={c.id}
+                      id={`cot-${c.id}`}
+                      className={`border-b border-line last:border-b-0 ${
+                        c.id === resaltada ? 'bg-blue-soft' : ''
+                      }`}
+                    >
+                      <td className="max-w-[220px] px-4 py-3">
                         <Link
                           to={`/cotizacion/${c.id}`}
                           className="text-sm font-extrabold text-navy hover:text-blue"
                         >
-                          {c.numero === null ? 'Borrador' : `#${c.numero}`}
+                          {referencia(c)}
                         </Link>
+                        {c.proyecto != null && c.proyecto.descripcion.trim() !== '' && (
+                          <span className="block truncate text-xs text-muted" title={c.proyecto.descripcion}>
+                            {c.proyecto.descripcion}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         {cli === undefined ? (
@@ -347,10 +390,7 @@ export default function Cotizaciones() {
                           {puede('cotizaciones.crear') && (
                             <Boton
                               tamano="sm"
-                              onClick={() => {
-                                duplicar(c.id)
-                                navigate('/cotizacion')
-                              }}
+                              onClick={() => navigate(`/cotizacion/${duplicar(c.id)}`)}
                             >
                               Duplicar
                             </Boton>

@@ -96,6 +96,22 @@ service cloud.firestore {
         || (activo() && resource.data.vendedorUid == request.auth.uid);
     }
 
+    // asesorias: historial del Asesor de proyectos. Cada vendedor guarda y lee sus propias
+    // conversaciones; el administrador las ve todas. La app borra las vencidas (campo vence).
+    match /asesorias/{asesoriaId} {
+      allow read: if esAdmin()
+        || (activo() && resource.data.vendedorUid == request.auth.uid);
+      allow create: if esAdmin()
+        || (tienePermiso('asesor.ia')
+            && request.resource.data.vendedorUid == request.auth.uid);
+      allow update: if esAdmin()
+        || (activo()
+            && resource.data.vendedorUid == request.auth.uid
+            && request.resource.data.vendedorUid == resource.data.vendedorUid);
+      allow delete: if esAdmin()
+        || (activo() && resource.data.vendedorUid == request.auth.uid);
+    }
+
     // consecutivos/cotizaciones: contador compartido del número de cotización. Cualquier
     // vendedor activo lo incrementa dentro de una transacción, pero nunca lo retrocede.
     match /consecutivos/{documento} {

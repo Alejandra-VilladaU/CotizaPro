@@ -72,8 +72,14 @@ const ENTRADAS: Entrada[] = [
 ]
 
 function useEntradas(): Entrada[] {
-  const { puede } = useAuth()
-  return ENTRADAS.filter((e) => e.permiso === undefined || puede(e.permiso))
+  const { puede, usuario } = useAuth()
+  const permitidas = ENTRADAS.filter((e) => e.permiso === undefined || puede(e.permiso))
+  if (usuario?.rol !== 'Vendedor') return permitidas
+  // El vendedor arranca casi siempre desde una consulta al asesor: va de primero en su menú.
+  return [
+    ...permitidas.filter((e) => e.to === '/asesor'),
+    ...permitidas.filter((e) => e.to !== '/asesor'),
+  ]
 }
 
 export function Logo({ alto = 26 }: { alto?: number }) {

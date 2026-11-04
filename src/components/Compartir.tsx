@@ -2,6 +2,7 @@ import { Check, Copy, Download, Mail, MessageCircle, Printer } from 'lucide-reac
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { archivoPdf, compartirPdf, descargarPdf } from '../lib/pdf'
+import { referencia } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import { Boton, Etiqueta, Modal } from './ui'
 import type { Cotizacion } from '../lib/types'
@@ -30,9 +31,8 @@ export default function Compartir({
     'listo',
   )
 
-  const numero = cotizacion.numero
   const enlace = `${window.location.origin}/pdf/${cotizacion.id}`
-  const titulo = numero === null ? 'Cotización (borrador)' : `Cotización #${numero}`
+  const titulo = `Cotización ${referencia(cotizacion)}${cotizacion.numero === null ? ' (borrador)' : ''}`
   const soloDigitos = telefono.replace(/\D/g, '')
   // Colombia: los números de 10 dígitos necesitan el indicativo 57.
   const internacional = soloDigitos.length === 10 ? `57${soloDigitos}` : soloDigitos

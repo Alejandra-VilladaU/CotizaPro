@@ -11,10 +11,10 @@ import { useAuth } from './auth'
 import { backendLocalDatos, type BackendDatos, type Datos } from './datosApi'
 import { backendFirestore } from './datosFirestore'
 import { firebaseHabilitado } from './firebase'
-import { estaVencida, itemDesdeMaterial } from './quote'
+import { estaVencida, itemDesdeMaterial, referencia } from './quote'
 import { CLIENTES_SEED, COTIZACIONES_SEED, EMPRESA_SEED, MATERIALES_SEED } from './seed'
 import type { Faltante } from './inventario'
-import type { Cliente, Cotizacion, Empresa, Material, Pago } from './types'
+import type { Asesoria, Cliente, Cotizacion, Empresa, Material, Pago } from './types'
 
 const CLAVE = 'cotizapro.v1'
 const CLAVE_BORRADOR = 'cotizapro.borrador'
@@ -114,6 +114,8 @@ type Contexto = {
   /** Registra el pago de una cotización, la deja como Aceptada y descuenta el inventario. */
   registrarPago: (id: string, pago: Omit<Pago, 'registradoPor'>) => Faltante[]
   duplicar: (id: string) => string
+  /** Guarda en el borrador en curso la asesoría de la que salieron sus materiales. */
+  adjuntarAsesoria: (asesoria: Asesoria) => void
   eliminarCotizacion: (id: string) => void
   abrirBorrador: (id: string) => void
 
@@ -279,6 +281,9 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         vendedor: usuario?.nombre ?? ref.current.empresa.vendedor,
         vendedorUid: usuario?.uid ?? null,
         autorizacionEdicion: null,
+        proyecto: null,
+        asesoria: null,
+        duplicadaDe: null,
         creada: ahora,
         emitida: null,
         actualizada: ahora,
@@ -513,6 +518,9 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
           autorizacionEdicion: null,
           pago: null,
           stockDescontado: false,
+          proyecto: origen.proyecto == null ? null : { ...origen.proyecto },
+          asesoria: origen.asesoria == null ? null : { ...origen.asesoria },
+          duplicadaDe: referencia(origen),
           creada: ahora,
           emitida: null,
           actualizada: ahora,
@@ -525,6 +533,22 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         }))
         guardarCotizacion(copia)
         return copia.id
+      },
+
+      adjuntarAsesoria: (asesoria) => {
+        const destino = asegurarBorrador()
+        mapear(destino.id, (c) => ({
+          ...c,
+          asesoria,
+          // La consulta sirve de punto de partida si aún no se describió el proyecto.
+          proyecto:
+            c.proyecto != null && c.proyecto.descripcion.trim() !== ''
+              ? c.proyecto
+              : {
+                  descripcion: asesoria.consulta.split('\n')[0],
+                  responsable: c.proyecto?.responsable ?? '',
+                },
+        }))
       },
 
       eliminarCotizacion: (id) => {

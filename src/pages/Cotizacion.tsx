@@ -1,5 +1,5 @@
-import { Printer, Share2, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Copy, Printer, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Avatar,
@@ -21,9 +21,19 @@ import { exportarDetalle } from '../lib/export'
 import { UNIDAD_LABEL, cop, fecha, fechaCorta, hora, iniciales } from '../lib/format'
 import { mensajeFaltantes } from '../lib/inventario'
 import type { Pago } from '../lib/types'
-import { calcularTotales, mensajeWhatsApp, preciosDesactualizados, totalLinea, vence } from '../lib/quote'
+import {
+  calcularTotales,
+  mensajeWhatsApp,
+  porCapitulo,
+  preciosDesactualizados,
+  referencia,
+  totalLinea,
+  vence,
+} from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
+
+export const ULTIMA_ABIERTA = 'cotizapro.ultimaAbierta'
 
 const TONO_ESTADO = {
   Borrador: 'gris',
@@ -241,12 +251,13 @@ export default function CotizacionPage() {
     puedeEditar,
     autorizarEdicion,
     esPropia,
+    duplicar,
   } = useDatos()
   const { puede, usuario } = useAuth()
   const { id } = useParams()
   const navigate = useNavigate()
   const [abrirCliente, setAbrirCliente] = useState(false)
-  /** 'emitida' abre el modal justo después de generar y al cerrarlo vuelve al historial. */
+  /** 'emitida' abre el modal justo después de generar; al cerrarlo sigue en esta cotización. */
   const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(null)
   const [pagoAbierto, setPagoAbierto] = useState(false)
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
@@ -262,6 +273,16 @@ export default function CotizacionPage() {
     [actual],
   )
   const desactualizados = actual === null ? [] : preciosDesactualizados(actual, datos.materiales)
+  const capitulos = useMemo(
+    () => (actual === null ? [] : porCapitulo(actual, datos.materiales)),
+    [actual, datos.materiales],
+  )
+
+  // El historial resalta la última cotización abierta al volver a la lista.
+  const actualId = actual?.id
+  useEffect(() => {
+    if (actualId !== undefined) sessionStorage.setItem(ULTIMA_ABIERTA, actualId)
+  }, [actualId])
 
   // Al emitir, el borrador deja de serlo: la ruta pasa a apuntar a la cotización.
   const generar = (cotizacionId: string) => {
@@ -313,7 +334,10 @@ export default function CotizacionPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-[22px] font-extrabold text-navy">
-            Cotización {actual.numero === null ? '(borrador)' : `#${actual.numero}`}
+            Cotización {referencia(actual)}
+            {actual.numero === null && (
+              <span className="ml-1.5 text-base font-semibold text-muted">(borrador)</span>
+            )}
           </h1>
           <Badge tono={TONO_ESTADO[actual.estado]}>{actual.estado}</Badge>
           <span className="text-xs text-muted">
@@ -334,7 +358,7 @@ export default function CotizacionPage() {
               tamano="sm"
               onClick={() =>
                 exportarDetalle(
-                  `cotizacion-${actual.numero ?? 'borrador'}`,
+                  `cotizacion-${referencia(actual).replace('#', '')}`,
                   actual,
                   clienteActual,
                   datos.materiales,
@@ -342,6 +366,15 @@ export default function CotizacionPage() {
               }
             >
               Excel
+            </Boton>
+          )}
+          {puede('cotizaciones.crear') && (
+            <Boton
+              tamano="sm"
+              title="Crea un borrador nuevo con los mismos materiales y datos del proyecto"
+              onClick={() => navigate(`/cotizacion/${duplicar(actual.id)}`)}
+            >
+              <Copy size={15} /> Duplicar
             </Boton>
           )}
           {(actual.estado === 'Enviada' || actual.estado === 'Vencida') && (
@@ -386,6 +419,24 @@ export default function CotizacionPage() {
                 Autorizar edición
               </Boton>
             )}
+          </Banner>
+        </div>
+      )}
+
+      {editable && actual.duplicadaDe != null && (
+        <div className="mb-4">
+          <Banner tono="blue">
+            <span className="flex-1">
+              Copia de la cotización {actual.duplicadaDe}. Ajusta la descripción del proyecto, el
+              cliente y las cantidades antes de generarla.
+            </span>
+            <button
+              type="button"
+              onClick={() => actualizarCotizacion(actual.id, { duplicadaDe: null })}
+              className="font-bold underline"
+            >
+              Entendido
+            </button>
           </Banner>
         </div>
       )}
@@ -514,6 +565,93 @@ export default function CotizacionPage() {
             </Card>
           </div>
 
+          <Card className="mb-4 p-4">
+            <Etiqueta className="mb-2">Proyecto</Etiqueta>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <div className="text-xs font-semibold text-muted">Cliente</div>
+                <div className="mt-1 text-sm font-bold text-navy">
+                  {clienteActual?.nombre ?? 'Sin cliente'}
+                  {clienteActual?.obra !== undefined && clienteActual.obra !== '' && (
+                    <span className="font-normal text-muted"> · Obra: {clienteActual.obra}</span>
+                  )}
+                </div>
+              </div>
+              <label className="block">
+                <div className="text-xs font-semibold text-muted">Responsable del proyecto</div>
+                <input
+                  value={actual.proyecto?.responsable ?? ''}
+                  readOnly={!editable}
+                  onChange={(e) =>
+                    actualizarCotizacion(actual.id, {
+                      proyecto: {
+                        descripcion: actual.proyecto?.descripcion ?? '',
+                        responsable: e.target.value,
+                      },
+                    })
+                  }
+                  placeholder="Maestro de obra, contratista o quien recibe"
+                  className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm outline-none focus:border-blue read-only:bg-surface"
+                />
+              </label>
+              <label className="block sm:col-span-2">
+                <div className="text-xs font-semibold text-muted">Descripción del proyecto</div>
+                <textarea
+                  value={actual.proyecto?.descripcion ?? ''}
+                  readOnly={!editable}
+                  onChange={(e) =>
+                    actualizarCotizacion(actual.id, {
+                      proyecto: {
+                        descripcion: e.target.value,
+                        responsable: actual.proyecto?.responsable ?? '',
+                      },
+                    })
+                  }
+                  rows={2}
+                  placeholder="Ej. Remodelación de cocina de 2,40 m con mueble bajo, mesón y luces LED"
+                  className="mt-1 w-full resize-y rounded-md border border-line px-3 py-2 text-sm outline-none focus:border-blue read-only:bg-surface"
+                />
+              </label>
+            </div>
+          </Card>
+
+          {actual.asesoria != null && (
+            <Card className="mb-4 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Etiqueta className="flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-blue" aria-hidden />
+                  Asesoría del proyecto
+                </Etiqueta>
+                <span className="text-xs text-muted">
+                  Asesor de proyectos · {fecha(actual.asesoria.fecha)}
+                </span>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-navy">
+                {actual.asesoria.consulta}
+              </p>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-[13px] font-bold text-blue">
+                  Ver el detalle de la asesoría
+                </summary>
+                <div className="mt-2 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md bg-surface p-3 text-[13px] leading-relaxed text-navy">
+                  {actual.asesoria.respuesta}
+                </div>
+              </details>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-muted">Se incluye en el PDF como valor agregado.</span>
+                {editable && (
+                  <button
+                    type="button"
+                    onClick={() => actualizarCotizacion(actual.id, { asesoria: null })}
+                    className="text-xs font-bold text-danger"
+                  >
+                    Quitar de la cotización
+                  </button>
+                )}
+              </div>
+            </Card>
+          )}
+
           {editable && desactualizados.length > 0 && (
             <div className="mb-4">
               <Banner tono="warn">
@@ -544,17 +682,33 @@ export default function CotizacionPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {actual.items.map((item) => (
-                    <FilaItem
-                      key={item.materialId}
-                      item={item}
-                      editable={editable}
-                      stockDisponible={material(item.materialId)?.stock ?? null}
-                      onCantidad={(v) => cambiarCantidad(actual.id, item.materialId, v)}
-                      onPrecio={(v) => cambiarPrecio(actual.id, item.materialId, v)}
-                      onDescuento={(v) => cambiarDescuentoLinea(actual.id, item.materialId, v)}
-                      onQuitar={() => quitarItem(actual.id, item.materialId)}
-                    />
+                  {capitulos.map((cap) => (
+                    <Fragment key={cap.nombre}>
+                      <tr className="border-b border-line bg-surface">
+                        <td colSpan={5} className="px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.05em] text-navy">
+                          {cap.nombre}
+                          <span className="ml-2 font-semibold normal-case tracking-normal text-muted">
+                            {cap.items.length} {cap.items.length === 1 ? 'ítem' : 'ítems'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-right text-[13px] font-extrabold tabular-nums text-navy">
+                          {cop(cap.subtotal)}
+                        </td>
+                        <td />
+                      </tr>
+                      {cap.items.map((item) => (
+                        <FilaItem
+                          key={item.materialId}
+                          item={item}
+                          editable={editable}
+                          stockDisponible={material(item.materialId)?.stock ?? null}
+                          onCantidad={(v) => cambiarCantidad(actual.id, item.materialId, v)}
+                          onPrecio={(v) => cambiarPrecio(actual.id, item.materialId, v)}
+                          onDescuento={(v) => cambiarDescuentoLinea(actual.id, item.materialId, v)}
+                          onQuitar={() => quitarItem(actual.id, item.materialId)}
+                        />
+                      ))}
+                    </Fragment>
                   ))}
                   {actual.items.length === 0 && (
                     <tr>
@@ -745,11 +899,7 @@ export default function CotizacionPage() {
             actual.vendedor,
             datos.empresa.nombre.replace(/ S\.A\.S\.$/, ''),
           )}
-          onCerrar={() => {
-            const volver = compartir === 'emitida'
-            setCompartir(null)
-            if (volver) navigate('/cotizaciones')
-          }}
+          onCerrar={() => setCompartir(null)}
         />
       )}
 
