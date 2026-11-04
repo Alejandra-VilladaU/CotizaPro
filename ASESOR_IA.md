@@ -3,7 +3,9 @@
 El módulo **Asesor de proyectos** (`/asesor`) es un chat dentro de CotizaPro donde el vendedor o
 el administrador describe un proyecto ("¿cómo construyo un mueble de cocina de 2,40 m?"), adjunta
 fotos, planos o dibujos a mano, y recibe medidas, pasos y la lista de materiales **del inventario
-real**, con un botón para pasarlos a la cotización en curso.
+real**, con un botón para pasarlos a la cotización en curso. Además de lo indispensable, propone
+**materiales complementarios** para dejar el espacio terminado: pintura y sellador, brochas,
+rodillos y cinta para perfilar, iluminación y accesorios.
 
 ## Por qué Google Gemini
 
@@ -41,21 +43,44 @@ Function que haga de intermediaria; el resto del módulo no cambia.
 
 - `src/lib/ia.ts`: lee la configuración, arma la instrucción de sistema y llama a
   `generativelanguage.googleapis.com`. Las imágenes viajan como `inline_data` en base64.
-- El **catálogo** (hasta 120 materiales: código, nombre, unidad, precio) se envía como contexto
+- El **catálogo** (hasta 200 materiales: código, nombre, unidad, precio, stock) se envía como contexto
   para que el asesor recomiende lo que la ferretería vende y con el precio vigente.
-- Se le pide cerrar la respuesta con un bloque fijo:
+- Se le pide cerrar la respuesta con dos bloques fijos, en este orden:
 
   ```
   MATERIALES SUGERIDOS
   CODIGO x CANTIDAD | nombre del material
   NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
+
+  MATERIALES COMPLEMENTARIOS
+  CODIGO x CANTIDAD | nombre del material
+  NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
   ```
 
-  `recomendacion()` cruza esas líneas con el inventario y la página muestra dos grupos: los
-  materiales del catálogo con su precio, la cantidad sugerida editable y un botón **Agregar**
-  (avisa si la cantidad supera el stock), y los que la ferretería no tiene, marcados como
-  **Falta** para conseguirlos aparte o cargarlos al inventario.
+  *Sugeridos* es lo indispensable para ejecutar lo consultado. *Complementarios* son entre 3 y 8
+  materiales opcionales que el cliente probablemente también necesite para terminar el espacio:
+  acabados (pintura, sellador, estuco, laca), herramientas de aplicación (brochas, rodillos,
+  bandejas, cinta de enmascarar, lijas, plástico protector), iluminación (bombillos, paneles o
+  cintas LED, interruptores, cable) y accesorios (manijas, bisagras, silicona). El asesor explica
+  en una o dos frases por qué los propone y calcula sus cantidades con el mismo criterio.
+- `recomendacion()` cruza cada bloque con el inventario y la página los muestra en dos tarjetas,
+  **Materiales para este proyecto** y **Complementarios para el acabado**, cada una con su
+  subtotal. Los materiales del catálogo traen precio, cantidad sugerida editable, botón
+  **Agregar** (avisa si la cantidad supera el stock) y **Agregar todos**; los que la ferretería
+  no tiene se marcan como **Falta** para conseguirlos aparte o cargarlos al inventario. Si el
+  modelo repite un material en ambos bloques, queda solo como necesario.
+- Para que los complementarios salgan del inventario y no como *Falta*, hay que tenerlos
+  cargados: ver la lista de la sección siguiente.
 - La conversación vive solo en memoria: al salir de la página no se guarda nada en Firestore.
+
+## Inventario sugerido para los complementarios
+
+El asesor solo puede proponer con código lo que exista en el inventario. El archivo
+[`materiales-complementarios.csv`](./materiales-complementarios.csv) trae pinturas, herramientas
+de pintura, iluminación y herrajes listos para cargar desde **Inventario → Importar CSV** (usa
+`;` como separador). Precios, stock y stock mínimo son de referencia: ajústalos antes o después
+de importar. Las filas con un código que ya exista actualizan ese material, así que revisa que
+los códigos `COD-9101` en adelante no estén ocupados.
 
 ## Alcance del asesor
 

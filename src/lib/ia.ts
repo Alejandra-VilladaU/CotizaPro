@@ -80,7 +80,7 @@ export const leerImagen = (archivo: File): Promise<Adjunto> =>
  * El catálogo se envía como contexto para que el asesor recomiende materiales que la
  * ferretería realmente vende y con el precio vigente.
  */
-const MAX_MATERIALES = 120
+const MAX_MATERIALES = 200
 
 const catalogo = (materiales: Material[]): string =>
   materiales
@@ -113,14 +113,29 @@ Reglas:
 - Calcula cantidades explicando el criterio (área, perímetro, número de piezas, desperdicio).
 - Recomienda materiales del catálogo de abajo cuando existan; si falta algo, dilo con claridad.
 - Los precios son en pesos colombianos y son de referencia.
-- Cuando la consulta sí sea del alcance, cierra SIEMPRE con una sección exactamente así, una
-  línea por material y sin texto extra:
+- Piensa en el espacio terminado, no solo en la obra: además de lo indispensable para construir,
+  propón los complementarios que el cliente probablemente también necesite para dejarlo listo,
+  aunque no los haya pedido. Por ejemplo: pintura, sellador, estuco, laca o barniz para el
+  acabado; brochas, rodillos, bandejas, cinta de enmascarar para perfilar, lijas y plástico
+  protector para aplicarlo; luminarias, bombillos o cintas LED, interruptores y cable para
+  iluminar; manijas, tiradores, siliconas u otros accesorios. Elige solo los que tengan sentido
+  para ese proyecto (entre 3 y 8), calcula sus cantidades con el mismo criterio (área a pintar y
+  rendimiento, número de puntos de luz, etc.) y explica en una o dos frases por qué los sugieres.
+- Cuando la consulta sí sea del alcance, cierra SIEMPRE con estas dos secciones, en este orden,
+  una línea por material y sin texto extra:
 
 MATERIALES SUGERIDOS
 CODIGO x CANTIDAD | nombre del material
 NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
 
-- En esa sección usa el CODIGO tal como aparece en el catálogo; nunca inventes códigos.
+MATERIALES COMPLEMENTARIOS
+CODIGO x CANTIDAD | nombre del material
+NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
+
+- MATERIALES SUGERIDOS lleva solo lo indispensable para ejecutar lo consultado; MATERIALES
+  COMPLEMENTARIOS, los acabados, herramientas de aplicación, iluminación y accesorios opcionales.
+  No repitas un material en las dos secciones.
+- En ambas secciones usa el CODIGO tal como aparece en el catálogo; nunca inventes códigos.
 - Si el proyecto necesita un material que NO está en el catálogo, inclúyelo igual en la lista con
   el código literal NO-DISPONIBLE, para que el vendedor sepa qué debe conseguir aparte.
 
@@ -208,6 +223,9 @@ const PALABRAS_DOMINIO = sinTildes(
    tornillo tornillos clavo clavos puntilla bisagra chapa cerradura riel perfil angulo platina
    tubo tuberia codo union llave cable alambre interruptor toma breaker luminaria bombillo
    pintura esmalte vinilo estuco masilla barniz laca sellante silicona pegante impermeabilizante
+   brocha brochas rodillo rodillos bandeja cinta enmascarar perfilar thinner
+   iluminacion iluminar luz luces lampara lamparas led bombilla bombillos panel reflector
+   decorar decoracion acabados habitacion alcoba sala comedor terraza patio garaje oficina local
    drywall superboard yeso icopor lija disco broca guante casco
    humedad gotera goteras filtracion acabado medida medidas metro metros area perimetro
    cantidad cantidades rendimiento desperdicio
@@ -249,25 +267,42 @@ export type Sugerencia = { material: Material; cantidad: number }
 /** Material que el proyecto necesita y la ferretería no tiene en su inventario. */
 export type NoDisponible = { nombre: string; cantidad: number; unidad: string }
 
-export type Recomendacion = {
+export type GrupoMateriales = {
   /** Materiales del inventario, listos para pasar a la cotización. */
   enInventario: Sugerencia[]
   noDisponibles: NoDisponible[]
 }
 
+export type Recomendacion = {
+  /** Lo indispensable para ejecutar lo consultado. */
+  necesarios: GrupoMateriales
+  /** Acabados, herramientas de aplicación, iluminación y accesorios opcionales. */
+  complementarios: GrupoMateriales
+}
+
+const NECESARIOS = /MATERIALES SUGERIDOS/i
+const COMPLEMENTARIOS = /MATERIALES COMPLEMENTARIOS/i
+
+/** Texto de la respuesta sin las secciones de materiales, que la página muestra aparte. */
+export const sinListado = (texto: string): string =>
+  texto.split(/MATERIALES (?:SUGERIDOS|COMPLEMENTARIOS)/i)[0].replace(/[*#\s]+$/, '').trim()
+
+/** Lo que hay entre el encabezado `inicio` y el siguiente encabezado (o el final). */
+const seccion = (texto: string, inicio: RegExp, siguiente: RegExp): string => {
+  const partes = texto.split(inicio)
+  return partes.length < 2 ? '' : partes.slice(1).join('\n').split(siguiente)[0]
+}
+
 const numero = (texto: string): number => Number(texto.replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'))
 
 /**
- * Lee las líneas `CODIGO x CANTIDAD | nombre` del cierre de la respuesta: las que traen un código
- * del catálogo se pueden pasar a la cotización con un clic, y las demás quedan como material que
- * hay que conseguir fuera del inventario.
+ * Lee las líneas `CODIGO x CANTIDAD | nombre` de una sección: las que traen un código del
+ * catálogo se pueden pasar a la cotización con un clic, y las demás quedan como material que hay
+ * que conseguir fuera del inventario.
  */
-export function recomendacion(texto: string, materiales: Material[]): Recomendacion {
-  const porCodigo = new Map(materiales.map((m) => [m.codigo.toUpperCase(), m]))
+function grupo(listado: string, porCodigo: Map<string, Material>): GrupoMateriales {
   const enInventario = new Map<string, Sugerencia>()
   const noDisponibles = new Map<string, NoDisponible>()
-  const listado = texto.split(/MATERIALES SUGERIDOS/i)[1]
-  if (listado === undefined) return { enInventario: [], noDisponibles: [] }
 
   listado.split('\n').forEach((linea) => {
     const limpia = linea.replace(/^[-*\s]+/, '').replace(/\*\*/g, '').trim()
@@ -294,4 +329,25 @@ export function recomendacion(texto: string, materiales: Material[]): Recomendac
   })
 
   return { enInventario: [...enInventario.values()], noDisponibles: [...noDisponibles.values()] }
+}
+
+/**
+ * Cruza el cierre de la respuesta con el inventario: `MATERIALES SUGERIDOS` trae lo
+ * indispensable y `MATERIALES COMPLEMENTARIOS` lo que ayuda a terminar el espacio. Si el modelo
+ * repite un material en ambas, queda solo como necesario.
+ */
+export function recomendacion(texto: string, materiales: Material[]): Recomendacion {
+  const porCodigo = new Map(materiales.map((m) => [m.codigo.toUpperCase(), m]))
+  const necesarios = grupo(seccion(texto, NECESARIOS, COMPLEMENTARIOS), porCodigo)
+  const extra = grupo(seccion(texto, COMPLEMENTARIOS, NECESARIOS), porCodigo)
+
+  const ids = new Set(necesarios.enInventario.map((s) => s.material.id))
+  const nombres = new Set(necesarios.noDisponibles.map((f) => f.nombre.toLowerCase()))
+  return {
+    necesarios,
+    complementarios: {
+      enInventario: extra.enInventario.filter((s) => !ids.has(s.material.id)),
+      noDisponibles: extra.noDisponibles.filter((f) => !nombres.has(f.nombre.toLowerCase())),
+    },
+  }
 }
