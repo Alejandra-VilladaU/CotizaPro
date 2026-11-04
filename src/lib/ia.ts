@@ -158,7 +158,7 @@ const traducir = (estado: number, detalle: string): string => {
   if (estado === 429)
     return 'Se agotó la cuota gratuita de Gemini por ahora. Espera unos minutos e intenta de nuevo.'
   if (estado === 503)
-    return 'El modelo está saturado en este momento. Vuelve a intentarlo en unos minutos.'
+    return 'Gemini está saturado en este momento: se reintentó varias veces y con otros modelos sin éxito. Vuelve a intentarlo en unos minutos.'
   return `El asesor no está disponible en este momento (error ${estado}).${detalle === '' ? '' : ` ${detalle}`}`
 }
 
@@ -172,13 +172,61 @@ const mensajeDelError = (cuerpo: string): string => {
   }
 }
 
-export async function preguntarIA(
+const API = 'https://generativelanguage.googleapis.com/v1beta'
+
+/** Errores pasajeros del lado de Google (modelo saturado o caído): vale la pena reintentar. */
+const PASAJERO = new Set([500, 502, 503, 504])
+
+/** Esperas entre intentos con el mismo modelo, en milisegundos. */
+const ESPERAS = [1500, 4000]
+
+/** Cuántos modelos alternos probar si el configurado sigue saturado. */
+const MAX_ALTERNOS = 2
+
+const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+class ErrorGemini extends Error {
+  constructor(readonly estado: number, mensaje: string) {
+    super(mensaje)
+  }
+}
+
+type ModeloApi = { name?: string; supportedGenerationMethods?: string[] }
+
+/**
+ * Modelos "flash" de texto que la clave puede usar, distintos del configurado. Se consultan a la
+ * API en vez de fijarlos en el código porque Google los renombra y retira con frecuencia.
+ */
+async function modelosAlternos(config: ConfigIA): Promise<string[]> {
+  try {
+    const respuesta = await fetch(`${API}/models?pageSize=200`, {
+      headers: { 'x-goog-api-key': config.apiKey },
+    })
+    if (!respuesta.ok) return []
+    const datos = (await respuesta.json()) as { models?: ModeloApi[] }
+    return (datos.models ?? [])
+      .filter((m) => m.supportedGenerationMethods?.includes('generateContent') === true)
+      .map((m) => (m.name ?? '').replace(/^models\//, ''))
+      .filter(
+        (n) =>
+          n.includes('flash') &&
+          n !== config.modelo &&
+          !/image|tts|audio|live|embed|native|thinking/.test(n),
+      )
+      .sort((a, b) => Number(/preview|exp/.test(a)) - Number(/preview|exp/.test(b)))
+      .slice(0, MAX_ALTERNOS)
+  } catch {
+    return []
+  }
+}
+
+async function generar(
   config: ConfigIA,
+  modelo: string,
   historial: Mensaje[],
   materiales: Material[],
 ): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelo}:generateContent`
-  const respuesta = await fetch(url, {
+  const respuesta = await fetch(`${API}/models/${modelo}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.apiKey },
     body: JSON.stringify({
@@ -191,7 +239,10 @@ export async function preguntarIA(
   })
 
   if (!respuesta.ok)
-    throw new Error(traducir(respuesta.status, mensajeDelError(await respuesta.text())))
+    throw new ErrorGemini(
+      respuesta.status,
+      traducir(respuesta.status, mensajeDelError(await respuesta.text())),
+    )
 
   const datos: unknown = await respuesta.json()
   const texto = (datos as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
@@ -200,6 +251,43 @@ export async function preguntarIA(
   if (texto === undefined || texto.trim() === '')
     throw new Error('El asesor respondió vacío. Reformula la pregunta.')
   return texto
+}
+
+/** Reintenta con espera mientras Google responda que el modelo está saturado. */
+async function conReintentos(intento: () => Promise<string>): Promise<string> {
+  for (const espera of ESPERAS) {
+    try {
+      return await intento()
+    } catch (e) {
+      if (!(e instanceof ErrorGemini) || !PASAJERO.has(e.estado)) throw e
+      await esperar(espera)
+    }
+  }
+  return intento()
+}
+
+/**
+ * Pregunta al modelo configurado y, si sigue saturado tras los reintentos, a otros modelos
+ * "flash" disponibles para la clave. Los errores de clave, cuota o permisos no se reintentan.
+ */
+export async function preguntarIA(
+  config: ConfigIA,
+  historial: Mensaje[],
+  materiales: Material[],
+): Promise<string> {
+  try {
+    return await conReintentos(() => generar(config, config.modelo, historial, materiales))
+  } catch (e) {
+    if (!(e instanceof ErrorGemini) || !PASAJERO.has(e.estado)) throw e
+    for (const modelo of await modelosAlternos(config)) {
+      try {
+        return await generar(config, modelo, historial, materiales)
+      } catch (otro) {
+        if (!(otro instanceof ErrorGemini) || !PASAJERO.has(otro.estado)) throw otro
+      }
+    }
+    throw e
+  }
 }
 
 const sinTildes = (texto: string): string =>
