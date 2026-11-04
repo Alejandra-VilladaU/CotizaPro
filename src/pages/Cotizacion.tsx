@@ -1,6 +1,6 @@
 import { Copy, Printer, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   Avatar,
   Badge,
@@ -259,7 +259,12 @@ export default function CotizacionPage() {
   const navigate = useNavigate()
   const [abrirCliente, setAbrirCliente] = useState(false)
   /** 'emitida' abre el modal justo después de generar; al cerrarlo sigue en esta cotización. */
-  const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(null)
+  const location = useLocation()
+  // Al generar desde /cotizacion la ruta cambia a /cotizacion/:id y la página se vuelve a montar:
+  // el aviso de abrir Compartir viaja en el estado de la navegación.
+  const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(() =>
+    (location.state as { compartir?: boolean } | null)?.compartir === true ? 'emitida' : null,
+  )
   const [pagoAbierto, setPagoAbierto] = useState(false)
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -287,8 +292,11 @@ export default function CotizacionPage() {
 
   // Al emitir, el borrador deja de serlo: la ruta pasa a apuntar a la cotización.
   const generar = (cotizacionId: string) => {
-    void generarCotizacion(cotizacionId).then(() => setCompartir('emitida'))
-    if (id === undefined) navigate(`/cotizacion/${cotizacionId}`, { replace: true })
+    void generarCotizacion(cotizacionId).then(() => {
+      if (id === undefined)
+        navigate(`/cotizacion/${cotizacionId}`, { replace: true, state: { compartir: true } })
+      else setCompartir('emitida')
+    })
   }
 
   const sugerencias = useMemo(() => {
