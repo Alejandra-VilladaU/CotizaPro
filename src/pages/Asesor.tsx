@@ -11,10 +11,13 @@ import {
   leerImagen,
   preguntarIA,
   recomendacion,
+  sinListado,
   type Adjunto,
   type ConfigIA,
+  type GrupoMateriales,
   type Mensaje,
   type Recomendacion,
+  type Sugerencia,
 } from '../lib/ia'
 import { useDatos } from '../lib/store'
 
@@ -22,12 +25,18 @@ const EJEMPLOS = [
   '¿Cómo construyo un mueble de cocina de 2,40 m con dos puertas?',
   'Necesito una mesa de comedor de 1,60 × 0,90 m en madera: ¿qué materiales llevo?',
   'Adjunto el dibujo de un closet: dime medidas y materiales.',
+  'Quiero remodelar y pintar una habitación de 3 × 4 m: ¿qué necesito?',
 ]
 
 const nuevoId = (): string => Math.random().toString(36).slice(2)
 
-/** La respuesta cierra con "MATERIALES SUGERIDOS": esa sección se muestra como botones. */
-const sinListado = (texto: string): string => texto.split(/MATERIALES SUGERIDOS/i)[0].trim()
+const SIN_RECOMENDACION: Recomendacion = {
+  necesarios: { enInventario: [], noDisponibles: [] },
+  complementarios: { enInventario: [], noDisponibles: [] },
+}
+
+const vacio = (g: GrupoMateriales): boolean =>
+  g.enInventario.length === 0 && g.noDisponibles.length === 0
 
 function Burbuja({ mensaje }: { mensaje: Mensaje }) {
   const mia = mensaje.autor === 'usuario'
@@ -58,81 +67,91 @@ function Burbuja({ mensaje }: { mensaje: Mensaje }) {
   )
 }
 
-function Sugerencias({ lista }: { lista: Recomendacion }) {
-  const { agregarMaterial } = useDatos()
-  const { puede } = useAuth()
-  const [cantidades, setCantidades] = useState<Record<string, number>>({})
-  const [agregados, setAgregados] = useState<string[]>([])
-  if (lista.enInventario.length === 0 && lista.noDisponibles.length === 0) return null
+type PropsGrupo = {
+  titulo: string
+  ayuda?: string
+  grupo: GrupoMateriales
+  cantidadDe: (s: Sugerencia) => number
+  cambiarCantidad: (id: string, cantidad: number) => void
+  agregados: string[]
+  agregar: (s: Sugerencia[]) => void
+}
 
-  const cantidadDe = ({ material, cantidad }: Recomendacion['enInventario'][number]): number =>
-    cantidades[material.id] ?? cantidad
-  const total = lista.enInventario.reduce((acc, s) => acc + s.material.precio * cantidadDe(s), 0)
+function Grupo({ titulo, ayuda, grupo, cantidadDe, cambiarCantidad, agregados, agregar }: PropsGrupo) {
+  const { puede } = useAuth()
+  const total = grupo.enInventario.reduce((acc, s) => acc + s.material.precio * cantidadDe(s), 0)
+  const pendientes = grupo.enInventario.filter(
+    (s) => !agregados.includes(s.material.id) && cantidadDe(s) > 0,
+  )
 
   return (
-    <Card className="mt-2 p-3">
-      {lista.enInventario.length > 0 && (
-        <>
-          <div className="flex items-center justify-between gap-2">
-            <Etiqueta>Materiales del inventario para este proyecto</Etiqueta>
-            <span className="text-sm font-extrabold text-navy">{cop(total)}</span>
-          </div>
-          <div className="mt-2 space-y-2">
-            {lista.enInventario.map((sugerencia) => {
-              const { material } = sugerencia
-              const cantidad = cantidadDe(sugerencia)
-              const agregado = agregados.includes(material.id)
-              return (
-                <div key={material.id} className="flex items-center gap-2 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-navy">{material.nombre}</div>
-                    <div className="text-xs text-muted">
-                      {material.codigo} · {cop(material.precio)} / {material.unidad} ·{' '}
-                      {cop(material.precio * cantidad)}
-                    </div>
-                    {cantidad > material.stock && (
-                      <div className="text-xs font-semibold text-warn">
-                        Solo hay {material.stock} {material.unidad} en inventario
-                      </div>
-                    )}
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <Etiqueta>{titulo}</Etiqueta>
+        {grupo.enInventario.length > 0 && (
+          <span className="text-sm font-extrabold text-navy">{cop(total)}</span>
+        )}
+      </div>
+      {ayuda !== undefined && <p className="mt-0.5 text-xs text-muted">{ayuda}</p>}
+
+      {grupo.enInventario.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {grupo.enInventario.map((sugerencia) => {
+            const { material } = sugerencia
+            const cantidad = cantidadDe(sugerencia)
+            const agregado = agregados.includes(material.id)
+            return (
+              <div key={material.id} className="flex items-center gap-2 text-sm">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-navy">{material.nombre}</div>
+                  <div className="text-xs text-muted">
+                    {material.codigo} · {cop(material.precio)} / {material.unidad} ·{' '}
+                    {cop(material.precio * cantidad)}
                   </div>
-                  <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={cantidad}
-                    aria-label={`Cantidad de ${material.nombre}`}
-                    disabled={agregado}
-                    onChange={(e) =>
-                      setCantidades((c) => ({ ...c, [material.id]: Number(e.target.value) }))
-                    }
-                    className="h-9 w-16 rounded-lg border border-line px-2 text-center text-[15px] font-extrabold text-navy outline-none focus:border-blue disabled:bg-surface disabled:text-muted"
-                  />
-                  {puede('cotizaciones.crear') && (
-                    <Boton
-                      tamano="sm"
-                      variante={agregado ? 'secundario' : 'primario'}
-                      disabled={agregado || cantidad <= 0}
-                      onClick={() => {
-                        agregarMaterial(material.id, cantidad)
-                        setAgregados((a) => [...a, material.id])
-                      }}
-                    >
-                      {agregado ? 'Agregado' : 'Agregar'}
-                    </Boton>
+                  {cantidad > material.stock && (
+                    <div className="text-xs font-semibold text-warn">
+                      Solo hay {material.stock} {material.unidad} en inventario
+                    </div>
                   )}
                 </div>
-              )
-            })}
-          </div>
-        </>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={cantidad}
+                  aria-label={`Cantidad de ${material.nombre}`}
+                  disabled={agregado}
+                  onChange={(e) => cambiarCantidad(material.id, Number(e.target.value))}
+                  className="h-9 w-16 rounded-lg border border-line px-2 text-center text-[15px] font-extrabold text-navy outline-none focus:border-blue disabled:bg-surface disabled:text-muted"
+                />
+                {puede('cotizaciones.crear') && (
+                  <Boton
+                    tamano="sm"
+                    variante={agregado ? 'secundario' : 'primario'}
+                    disabled={agregado || cantidad <= 0}
+                    onClick={() => agregar([sugerencia])}
+                  >
+                    {agregado ? 'Agregado' : 'Agregar'}
+                  </Boton>
+                )}
+              </div>
+            )
+          })}
+          {puede('cotizaciones.crear') && grupo.enInventario.length > 1 && (
+            <div className="flex justify-end">
+              <Boton tamano="sm" disabled={pendientes.length === 0} onClick={() => agregar(pendientes)}>
+                Agregar todos
+              </Boton>
+            </div>
+          )}
+        </div>
       )}
 
-      {lista.noDisponibles.length > 0 && (
-        <div className={lista.enInventario.length > 0 ? 'mt-3 border-t border-line pt-3' : ''}>
-          <Etiqueta>No está en el inventario de la ferretería</Etiqueta>
-          <ul className="mt-2 space-y-1.5">
-            {lista.noDisponibles.map((f) => (
+      {grupo.noDisponibles.length > 0 && (
+        <div className={grupo.enInventario.length > 0 ? 'mt-3' : 'mt-2'}>
+          <div className="text-xs font-semibold text-muted">No está en el inventario de la ferretería</div>
+          <ul className="mt-1.5 space-y-1.5">
+            {grupo.noDisponibles.map((f) => (
               <li key={f.nombre} className="flex items-center gap-2 text-sm">
                 <Badge tono="warn">Falta</Badge>
                 <span className="min-w-0 flex-1 truncate font-semibold text-navy">{f.nombre}</span>
@@ -142,17 +161,62 @@ function Sugerencias({ lista }: { lista: Recomendacion }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-muted">
-            Estos materiales no se pueden cotizar: consíguelos aparte o pídele al administrador que
-            los cargue al inventario.
-          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Sugerencias({ lista }: { lista: Recomendacion }) {
+  const { agregarMaterial } = useDatos()
+  const { puede } = useAuth()
+  const [cantidades, setCantidades] = useState<Record<string, number>>({})
+  const [agregados, setAgregados] = useState<string[]>([])
+  const { necesarios, complementarios } = lista
+  if (vacio(necesarios) && vacio(complementarios)) return null
+
+  const cantidadDe = ({ material, cantidad }: Sugerencia): number =>
+    cantidades[material.id] ?? cantidad
+  const comunes = {
+    cantidadDe,
+    agregados,
+    cambiarCantidad: (id: string, cantidad: number) => setCantidades((c) => ({ ...c, [id]: cantidad })),
+    agregar: (sugerencias: Sugerencia[]) => {
+      sugerencias.forEach((s) => agregarMaterial(s.material.id, cantidadDe(s)))
+      setAgregados((a) => [...a, ...sugerencias.map((s) => s.material.id)])
+    },
+  }
+  const faltan = necesarios.noDisponibles.length + complementarios.noDisponibles.length
+  const cotizables = necesarios.enInventario.length + complementarios.enInventario.length
+
+  return (
+    <Card className="mt-2 space-y-3 p-3">
+      {!vacio(necesarios) && (
+        <Grupo titulo="Materiales para este proyecto" grupo={necesarios} {...comunes} />
+      )}
+
+      {!vacio(complementarios) && (
+        <div className={vacio(necesarios) ? '' : 'border-t border-line pt-3'}>
+          <Grupo
+            titulo="Complementarios para el acabado"
+            ayuda="Pintura, herramientas, iluminación y accesorios para dejar el espacio listo. Son opcionales: ofrécelos al cliente."
+            grupo={complementarios}
+            {...comunes}
+          />
         </div>
       )}
 
-      {puede('cotizaciones.crear') && lista.enInventario.length > 0 && (
+      {faltan > 0 && (
+        <p className="text-xs text-muted">
+          Los marcados como «Falta» no se pueden cotizar: consíguelos aparte o pídele al
+          administrador que los cargue al inventario.
+        </p>
+      )}
+
+      {puede('cotizaciones.crear') && cotizables > 0 && (
         <Link
           to="/cotizacion"
-          className="mt-3 block rounded-[10px] bg-navy px-4 py-2.5 text-center text-sm font-bold text-white"
+          className="block rounded-[10px] bg-navy px-4 py-2.5 text-center text-sm font-bold text-white"
         >
           Ir a la cotización en curso →
         </Link>
@@ -185,7 +249,7 @@ export default function Asesor() {
   const recomendados = useMemo(
     () =>
       ultima === undefined || ultima.autor !== 'asesor'
-        ? { enInventario: [], noDisponibles: [] }
+        ? SIN_RECOMENDACION
         : recomendacion(ultima.texto, materialesActivos),
     [ultima, materialesActivos],
   )
