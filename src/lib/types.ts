@@ -42,6 +42,22 @@ export type ItemCotizacion = {
   precioLista: number
   cantidad: number
   descuento: number
+  /** Categoría del material al cotizar: agrupa la cotización por capítulos. */
+  categoria?: string
+}
+
+/** Qué se va a construir o remodelar: encabeza la cotización y el PDF. */
+export type Proyecto = {
+  descripcion: string
+  /** Quien está a cargo en obra: maestro, contratista, ingeniero o el mismo cliente. */
+  responsable: string
+}
+
+/** Resumen de la consulta al Asesor de proyectos que originó los materiales. */
+export type Asesoria = {
+  consulta: string
+  respuesta: string
+  fecha: string
 }
 
 export type MetodoPago = 'Efectivo' | 'Transferencia' | 'Tarjeta' | 'Crédito' | 'Otro'
@@ -74,6 +90,10 @@ export type Cotizacion = {
   pago?: Pago | null
   /** true mientras las cantidades de la cotización están descontadas del inventario. */
   stockDescontado?: boolean
+  proyecto?: Proyecto | null
+  asesoria?: Asesoria | null
+  /** Referencia de la cotización de la que se copió, si es un duplicado. */
+  duplicadaDe?: string | null
   creada: string
   emitida: string | null
   actualizada: string

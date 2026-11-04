@@ -84,7 +84,17 @@ Function que haga de intermediaria; el resto del módulo no cambia.
   modelo repite un material en ambos bloques, queda solo como necesario.
 - Para que los complementarios salgan del inventario y no como *Falta*, hay que tenerlos
   cargados: ver la lista de la sección siguiente.
-- La conversación vive solo en memoria: al salir de la página no se guarda nada en Firestore.
+- **Historial de consultas**: cada respuesta guarda la conversación en `asesorias` de Firestore
+  (en modo demo, en el navegador) durante 30 días (`DIAS_HISTORIAL` en
+  `src/lib/historialAsesor.ts`). El botón **Historial** lista las consultas del vendedor (el
+  administrador ve las de todo el equipo) y permite reabrir una y seguirla, o eliminarla. Las
+  imágenes adjuntas no se guardan, solo cuántas había. Las conversaciones vencidas se borran al
+  abrir el historial.
+- **Asesoría en la cotización**: al pulsar **Agregar** o **Agregar todos**, el borrador en curso
+  guarda la asesoría (`asesoria`: consultas del vendedor y última respuesta, sin la lista de
+  materiales) y, si aún no tiene descripción del proyecto, toma la primera consulta. La
+  cotización la muestra en la tarjeta **Asesoría del proyecto** y el PDF la imprime como valor
+  agregado; el vendedor puede quitarla mientras la cotización sea borrador.
 
 ## Inventario sugerido para los complementarios
 

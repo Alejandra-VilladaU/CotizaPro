@@ -1,4 +1,4 @@
-import { calcularTotales } from './quote'
+import { calcularTotales, referencia } from './quote'
 import type { Cliente, Cotizacion, Material } from './types'
 
 const celda = (valor: string | number): string => {
@@ -48,7 +48,7 @@ export function exportarCotizaciones(
   cotizaciones.forEach((c) => {
     const t = calcularTotales(c)
     filas.push([
-      c.numero ?? 'Borrador',
+      referencia(c),
       c.estado,
       nombreCliente(c.clienteId),
       c.vendedor,
@@ -99,7 +99,7 @@ export function exportarMaterialesCotizados(
   cotizaciones.forEach((c) => {
     c.items.forEach((i) => {
       filas.push([
-        c.numero ?? 'Borrador',
+        referencia(c),
         c.estado,
         nombreCliente(c.clienteId),
         c.vendedor,
@@ -126,7 +126,7 @@ export function exportarDetalle(
   materiales: Material[] = [],
 ): void {
   const filas: (string | number)[][] = [
-    ['Cotizacion', cotizacion.numero ?? 'Borrador'],
+    ['Cotizacion', referencia(cotizacion)],
     ['Cliente', cliente?.nombre ?? 'Sin cliente'],
     ['Vendedor', cotizacion.vendedor],
     ['Estado', cotizacion.estado],

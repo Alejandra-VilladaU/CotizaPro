@@ -1,9 +1,19 @@
-import { ImagePlus, SendHorizonal, Sparkles, Trash2, X } from 'lucide-react'
+import { History, ImagePlus, Plus, SendHorizonal, Sparkles, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Banner, Boton, Card, Etiqueta, Vacio } from '../components/ui'
 import { useAuth } from '../lib/auth'
-import { cop } from '../lib/format'
+import { cop, fecha } from '../lib/format'
+import {
+  DIAS_HISTORIAL,
+  aConversacion,
+  aMensajes,
+  eliminarConversacion,
+  guardarConversacion,
+  listarConversaciones,
+  nuevoIdConversacion,
+  type Conversacion,
+} from '../lib/historialAsesor'
 import {
   esConsultaDelNegocio,
   FUERA_DE_ALCANCE,
@@ -20,6 +30,7 @@ import {
   type Sugerencia,
 } from '../lib/ia'
 import { useDatos } from '../lib/store'
+import type { Asesoria } from '../lib/types'
 
 const EJEMPLOS = [
   '¿Cómo construyo un mueble de cocina de 2,40 m con dos puertas?',
@@ -34,6 +45,16 @@ const SIN_RECOMENDACION: Recomendacion = {
   necesarios: { enInventario: [], noDisponibles: [] },
   complementarios: { enInventario: [], noDisponibles: [] },
 }
+
+/** Consultas del vendedor y última respuesta del asesor, para guardarlas en la cotización. */
+const asesoriaActual = (mensajes: Mensaje[]): Asesoria => ({
+  consulta: mensajes
+    .filter((m) => m.autor === 'usuario' && m.texto.trim() !== '')
+    .map((m) => m.texto.trim())
+    .join('\n'),
+  respuesta: sinListado(mensajes.findLast((m) => m.autor === 'asesor')?.texto ?? ''),
+  fecha: new Date().toISOString(),
+})
 
 const vacio = (g: GrupoMateriales): boolean =>
   g.enInventario.length === 0 && g.noDisponibles.length === 0
@@ -214,8 +235,8 @@ function Grupo({ titulo, ayuda, grupo, cantidadDe, cambiarCantidad, agregados, a
   )
 }
 
-function Sugerencias({ lista }: { lista: Recomendacion }) {
-  const { agregarMaterial } = useDatos()
+function Sugerencias({ lista, asesoria }: { lista: Recomendacion; asesoria: Asesoria }) {
+  const { agregarMaterial, adjuntarAsesoria } = useDatos()
   const { puede } = useAuth()
   const [cantidades, setCantidades] = useState<Record<string, number>>({})
   const [agregados, setAgregados] = useState<string[]>([])
@@ -230,6 +251,8 @@ function Sugerencias({ lista }: { lista: Recomendacion }) {
     cambiarCantidad: (id: string, cantidad: number) => setCantidades((c) => ({ ...c, [id]: cantidad })),
     agregar: (sugerencias: Sugerencia[]) => {
       sugerencias.forEach((s) => agregarMaterial(s.material.id, cantidadDe(s)))
+      // La cotización guarda de qué asesoría salieron sus materiales.
+      adjuntarAsesoria(asesoria)
       setAgregados((a) => [...a, ...sugerencias.map((s) => s.material.id)])
     },
   }
@@ -275,6 +298,15 @@ function Sugerencias({ lista }: { lista: Recomendacion }) {
 export default function Asesor() {
   const { materialesActivos } = useDatos()
   const { usuario } = useAuth()
+  // Conversación en pantalla dentro del historial: id, dueño y fecha de creación.
+  const [enCurso, setEnCurso] = useState<{
+    id: string
+    dueno: { uid: string; nombre: string } | null
+    creada: string
+  } | null>(null)
+  const [historialAbierto, setHistorialAbierto] = useState(false)
+  const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null)
+  const [errorHistorial, setErrorHistorial] = useState<string | null>(null)
   const [config, setConfig] = useState<ConfigIA | null>(null)
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [texto, setTexto] = useState('')
@@ -331,12 +363,56 @@ export default function Asesor() {
     setAviso(null)
     try {
       const respuesta = await preguntarIA(config, historial, materialesActivos, setAviso)
-      setMensajes((m) => [...m, { id: nuevoId(), autor: 'asesor', texto: respuesta, adjuntos: [] }])
+      const final: Mensaje[] = [
+        ...historial,
+        { id: nuevoId(), autor: 'asesor', texto: respuesta, adjuntos: [] },
+      ]
+      setMensajes(final)
+      guardar(final)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'El asesor no está disponible.')
     } finally {
       setPensando(false)
     }
+  }
+
+  /** Cada respuesta del asesor actualiza la conversación en el historial. */
+  const guardar = (final: Mensaje[]) => {
+    const actualConv = enCurso ?? {
+      id: nuevoIdConversacion(),
+      dueno: usuario === null ? null : { uid: usuario.uid, nombre: usuario.nombre },
+      creada: new Date().toISOString(),
+    }
+    setEnCurso(actualConv)
+    setConversaciones(null)
+    void guardarConversacion(
+      aConversacion(actualConv.id, final, actualConv.dueno, actualConv.creada),
+      usuario,
+    ).catch(() =>
+      setErrorHistorial(
+        'No se pudo guardar la consulta en el historial. Revisa que las reglas de Firestore estén publicadas.',
+      ),
+    )
+  }
+
+  const abrirHistorial = () => {
+    setHistorialAbierto((a) => !a)
+    if (conversaciones !== null) return
+    setErrorHistorial(null)
+    void listarConversaciones(usuario)
+      .then(setConversaciones)
+      .catch(() => {
+        setConversaciones([])
+        setErrorHistorial(
+          'No se pudo leer el historial. Revisa que las reglas de Firestore estén publicadas.',
+        )
+      })
+  }
+
+  const nuevaConsulta = () => {
+    setMensajes([])
+    setEnCurso(null)
+    setError(null)
   }
 
   const cargar = async (archivos: FileList | null) => {
@@ -360,13 +436,93 @@ export default function Asesor() {
             carpintería y los materiales de la ferretería.
           </p>
         </div>
-        {mensajes.length > 0 && (
-          <Boton tamano="sm" onClick={() => setMensajes([])}>
-            <Trash2 size={15} aria-hidden />
-            Vaciar chat
+        <div className="flex flex-wrap gap-2">
+          <Boton tamano="sm" onClick={abrirHistorial}>
+            <History size={15} aria-hidden />
+            Historial
           </Boton>
-        )}
+          {mensajes.length > 0 && (
+            <Boton tamano="sm" onClick={nuevaConsulta}>
+              <Plus size={15} aria-hidden />
+              Nueva consulta
+            </Boton>
+          )}
+        </div>
       </div>
+
+      {errorHistorial !== null && (
+        <div className="mb-2">
+          <Banner tono="warn">{errorHistorial}</Banner>
+        </div>
+      )}
+
+      {historialAbierto && (
+        <Card className="mb-3 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <Etiqueta>
+              {usuario?.rol === 'Administrador' ? 'Consultas del equipo' : 'Tus consultas'} · últimos{' '}
+              {DIAS_HISTORIAL} días
+            </Etiqueta>
+            <button
+              type="button"
+              aria-label="Cerrar historial"
+              onClick={() => setHistorialAbierto(false)}
+              className="rounded-md p-1 text-muted hover:bg-surface"
+            >
+              <X size={15} aria-hidden />
+            </button>
+          </div>
+          {conversaciones === null ? (
+            <p className="mt-2 text-sm text-muted">Cargando historial…</p>
+          ) : conversaciones.length === 0 ? (
+            <p className="mt-2 text-sm text-muted">Aún no hay consultas guardadas.</p>
+          ) : (
+            <ul className="mt-2 max-h-72 divide-y divide-line overflow-y-auto">
+              {conversaciones.map((c) => (
+                <li key={c.id} className="flex items-center gap-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMensajes(aMensajes(c))
+                      setEnCurso({
+                        id: c.id,
+                        dueno: c.vendedorUid === null ? null : { uid: c.vendedorUid, nombre: c.vendedor },
+                        creada: c.creada,
+                      })
+                      setError(null)
+                      setHistorialAbierto(false)
+                    }}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span className="block truncate text-sm font-semibold text-navy hover:text-blue">
+                      {c.titulo}
+                    </span>
+                    <span className="block text-xs text-muted">
+                      {fecha(c.actualizada)} · {c.mensajes.length} mensajes
+                      {usuario?.rol === 'Administrador' && c.vendedor !== '' && ` · ${c.vendedor}`}
+                      {enCurso?.id === c.id && ' · abierta'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Eliminar la consulta ${c.titulo}`}
+                    onClick={() => {
+                      if (!confirm('¿Eliminar esta consulta del historial?')) return
+                      void eliminarConversacion(c.id, usuario).then(() => {
+                        setConversaciones((lista) => lista?.filter((x) => x.id !== c.id) ?? null)
+                        if (enCurso?.id === c.id) setEnCurso(null)
+                      })
+                    }}
+                    className="shrink-0 rounded-md p-1.5 text-muted hover:bg-danger-soft hover:text-danger"
+                  >
+                    <Trash2 size={15} aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
 
       {config !== null && !listo && (
         <Banner tono="warn">
@@ -404,7 +560,9 @@ export default function Asesor() {
         {mensajes.map((m) => (
           <Burbuja key={m.id} mensaje={m} />
         ))}
-        {!pensando && <Sugerencias key={ultima?.id} lista={recomendados} />}
+        {!pensando && ultima !== undefined && (
+          <Sugerencias key={ultima.id} lista={recomendados} asesoria={asesoriaActual(mensajes)} />
+        )}
         {pensando && (
           <Pensando conImagen={(ultima?.adjuntos.length ?? 0) > 0} aviso={aviso} />
         )}

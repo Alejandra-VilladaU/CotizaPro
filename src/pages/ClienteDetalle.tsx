@@ -5,7 +5,7 @@ import { Avatar, Badge, Boton, Card, Chip, Etiqueta, Vacio } from '../components
 import { useAuth } from '../lib/auth'
 import { exportarDetalle } from '../lib/export'
 import { cop, copCorto, fecha, iniciales } from '../lib/format'
-import { calcularTotales } from '../lib/quote'
+import { calcularTotales, referencia } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { EstadoCotizacion } from '../lib/types'
 
@@ -117,7 +117,7 @@ export default function ClienteDetalle() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-extrabold text-navy">
-                          {c.numero === null ? 'Borrador' : `#${c.numero}`}
+                          {referencia(c)}
                         </span>
                         <Badge tono={TONO[c.estado]}>{c.estado}</Badge>
                       </div>
@@ -141,7 +141,7 @@ export default function ClienteDetalle() {
                         tamano="sm"
                         onClick={() =>
                           exportarDetalle(
-                            `cotizacion-${c.numero ?? 'borrador'}`,
+                            `cotizacion-${referencia(c).replace('#', '')}`,
                             c,
                             actual,
                             datos.materiales,

@@ -1,10 +1,10 @@
 import { ArrowLeft, Download, Printer } from 'lucide-react'
-import { useEffect } from 'react'
+import { Fragment, useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Boton, Vacio } from '../components/ui'
 import { UNIDAD_LABEL, cop, fecha } from '../lib/format'
 import { descargarPdf } from '../lib/pdf'
-import { calcularTotales, totalLinea, vence } from '../lib/quote'
+import { calcularTotales, porCapitulo, referencia, textoPlano, totalLinea, vence } from '../lib/quote'
 import { useDatos } from '../lib/store'
 
 export default function Pdf() {
@@ -41,6 +41,11 @@ export default function Pdf() {
   const empresa = datos.empresa
   const cli = cliente(actual.clienteId)
   const totales = calcularTotales(actual)
+  const capitulos = porCapitulo(actual, datos.materiales)
+  const proyecto = actual.proyecto ?? null
+  const conProyecto =
+    proyecto !== null && (proyecto.descripcion.trim() !== '' || proyecto.responsable.trim() !== '')
+  let numeroItem = 0
 
   return (
     <div className="min-h-full bg-surface py-6 print:bg-white print:py-0">
@@ -78,7 +83,7 @@ export default function Pdf() {
               Cotización
             </div>
             <div className="text-[30px] font-extrabold leading-none text-navy">
-              {actual.numero === null ? 'Borrador' : `#${actual.numero}`}
+              {referencia(actual)}
             </div>
             <div className="mt-2 text-[11px] leading-relaxed text-muted">
               Fecha de emisión: {fecha(actual.emitida ?? actual.creada)}
@@ -124,6 +129,24 @@ export default function Pdf() {
           </div>
         </section>
 
+        {conProyecto && (
+          <section className="mt-4 rounded-[8px] border border-line p-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">
+              Proyecto
+            </div>
+            {proyecto.descripcion.trim() !== '' && (
+              <p className="mt-1 whitespace-pre-wrap text-[12px] font-semibold leading-relaxed text-navy">
+                {proyecto.descripcion}
+              </p>
+            )}
+            <div className="mt-1 text-[11px] text-muted">
+              Cliente: {cli?.nombre ?? 'Sin cliente'}
+              {proyecto.responsable.trim() !== '' && ` · Responsable: ${proyecto.responsable}`}
+              {` · Asesor: ${actual.vendedor}`}
+            </div>
+          </section>
+        )}
+
         <table className="mt-5 w-full">
           <thead>
             <tr className="bg-navy text-left text-[10px] font-bold uppercase tracking-[0.06em] text-white">
@@ -136,9 +159,19 @@ export default function Pdf() {
             </tr>
           </thead>
           <tbody>
-            {actual.items.map((item, i) => (
+            {capitulos.map((cap) => (
+              <Fragment key={cap.nombre}>
+                <tr className="border-b border-line bg-surface">
+                  <td colSpan={5} className="px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.05em] text-navy">
+                    {cap.nombre}
+                  </td>
+                  <td className="px-3 py-2 text-right text-[11px] font-extrabold tabular-nums text-navy">
+                    {cop(cap.subtotal)}
+                  </td>
+                </tr>
+            {cap.items.map((item) => (
               <tr key={item.materialId} className="border-b border-line">
-                <td className="px-3 py-2.5 text-[11px] text-muted">{i + 1}</td>
+                <td className="px-3 py-2.5 text-[11px] text-muted">{(numeroItem += 1)}</td>
                 <td className="px-3 py-2.5">
                   <div className="text-[12px] font-semibold text-navy">{item.nombre}</div>
                   <div className="text-[10px] text-muted">
@@ -161,6 +194,8 @@ export default function Pdf() {
                   {cop(totalLinea(item))}
                 </td>
               </tr>
+            ))}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -209,6 +244,24 @@ export default function Pdf() {
           </section>
         )}
 
+        {actual.asesoria != null && actual.asesoria.respuesta.trim() !== '' && (
+          <section className="mt-6 rounded-[8px] bg-blue-soft p-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-blue">
+              Asesoría del proyecto
+            </div>
+            <p className="mt-1 whitespace-pre-wrap text-[11px] font-semibold leading-relaxed text-navy">
+              {actual.asesoria.consulta}
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-navy">
+              {textoPlano(actual.asesoria.respuesta)}
+            </p>
+            <p className="mt-2 text-[10px] text-muted">
+              Recomendación de referencia elaborada con el Asesor de proyectos de CotizaPro. Medidas
+              y cantidades deben verificarse en obra.
+            </p>
+          </section>
+        )}
+
         <section className="mt-6">
           <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">Notas</div>
           <p className="mt-1 text-[11px] leading-relaxed text-muted">
@@ -226,7 +279,7 @@ export default function Pdf() {
           <div className="text-right">
             <img src={datos.empresa.logoUrl} alt="CotizaPro" className="ml-auto h-8 w-auto" />
             <div className="mt-1 text-[10px] text-muted">
-              Cotización generada con CotizaPro · Página 1 de 1
+              Cotización generada con CotizaPro
             </div>
           </div>
         </footer>

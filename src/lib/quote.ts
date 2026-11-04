@@ -42,7 +42,103 @@ export function itemDesdeMaterial(material: Material, cantidad: number): ItemCot
     precioLista: material.precio,
     cantidad,
     descuento: 0,
+    categoria: material.categoria,
   }
+}
+
+/** Número de la cotización o, mientras es borrador, una referencia corta y estable. */
+export function referencia(cotizacion: Cotizacion): string {
+  return cotizacion.numero === null
+    ? `BOR-${cotizacion.id.slice(-5)}`
+    : `#${cotizacion.numero}`
+}
+
+const normalizar = (texto: string): string =>
+  texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+/**
+ * Capítulos del presupuesto, en el orden en que se presentan. Cada categoría del inventario cae
+ * en el primero cuyas claves contenga (por eso Herramientas va antes que Acabados: "Herramientas
+ * de pintura" es herramienta, no acabado). Las categorías que no encajan conservan su nombre.
+ */
+const CAPITULOS: { nombre: string; claves: string[] }[] = [
+  { nombre: 'Herramientas', claves: ['herramienta'] },
+  {
+    nombre: 'Obra gris',
+    claves: ['cemento', 'concreto', 'mortero', 'acero', 'arido', 'agregado', 'ladrillo', 'bloque', 'mamposteria', 'cubierta', 'teja', 'estructura', 'obra gris'],
+  },
+  {
+    nombre: 'Instalaciones hidráulicas',
+    claves: ['hidraul', 'sanitari', 'plomer', 'tuberia', 'griferia', 'agua'],
+  },
+  {
+    nombre: 'Instalaciones eléctricas e iluminación',
+    claves: ['electric', 'iluminacion', 'luminaria', 'cable'],
+  },
+  {
+    nombre: 'Acabados y pintura',
+    claves: ['acabado', 'pintura', 'enchape', 'ceramica', 'piso', 'drywall', 'estuco'],
+  },
+  {
+    nombre: 'Carpintería y herrajes',
+    claves: ['madera', 'carpinter', 'herraje', 'tablero', 'aglomerado', 'melamina'],
+  },
+]
+
+const ORDEN = [
+  'Obra gris',
+  'Instalaciones hidráulicas',
+  'Instalaciones eléctricas e iluminación',
+  'Acabados y pintura',
+  'Carpintería y herrajes',
+  'Herramientas',
+]
+
+export function capitulo(categoria: string): string {
+  const clave = normalizar(categoria)
+  const encontrado = CAPITULOS.find((c) => c.claves.some((k) => clave.includes(k)))
+  if (encontrado !== undefined) return encontrado.nombre
+  return categoria.trim() === '' ? 'Otros' : categoria.trim()
+}
+
+export type Capitulo = { nombre: string; items: ItemCotizacion[]; subtotal: number }
+
+/**
+ * Agrupa las líneas por capítulo. La categoría sale del snapshot de la línea y, en cotizaciones
+ * anteriores a esa columna, del material actual del inventario.
+ */
+export function porCapitulo(cotizacion: Cotizacion, materiales: Material[]): Capitulo[] {
+  const grupos = new Map<string, ItemCotizacion[]>()
+  cotizacion.items.forEach((item) => {
+    const categoria =
+      item.categoria ??
+      materiales.find((m) => m.id === item.materialId || m.codigo === item.codigo)?.categoria ??
+      ''
+    const nombre = capitulo(categoria)
+    grupos.set(nombre, [...(grupos.get(nombre) ?? []), item])
+  })
+  const posicion = (nombre: string): number => {
+    const i = ORDEN.indexOf(nombre)
+    if (i >= 0) return i
+    return nombre === 'Otros' ? ORDEN.length + 1 : ORDEN.length
+  }
+  return [...grupos.entries()]
+    .sort(([a], [b]) => posicion(a) - posicion(b) || a.localeCompare(b))
+    .map(([nombre, items]) => ({
+      nombre,
+      items,
+      subtotal: Math.round(items.reduce((acc, i) => acc + totalLinea(i), 0)),
+    }))
+}
+
+/** Texto plano de la respuesta del asesor para el PDF: sin marcas de Markdown. */
+export function textoPlano(texto: string): string {
+  return texto
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '• ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 export function vence(cotizacion: Cotizacion): string {
@@ -80,11 +176,15 @@ export function mensajeWhatsApp(
   vendedor: string,
   empresa: string,
 ): string {
-  const numero = cotizacion.numero === null ? 'borrador' : `#${cotizacion.numero}`
+  const numero = referencia(cotizacion)
   const fechaVence = new Date(vence(cotizacion)).toLocaleDateString('es-CO', {
     day: 'numeric',
     month: 'long',
   })
   const totalTexto = `$ ${Math.round(total).toLocaleString('es-CO')}`
-  return `Hola ${nombreCliente}, le comparto la cotización ${numero} por ${totalTexto} (${cotizacion.items.length} materiales), válida hasta el ${fechaVence}. Cualquier ajuste me avisa. — ${vendedor}, ${empresa}.`
+  const proyecto =
+    cotizacion.proyecto == null || cotizacion.proyecto.descripcion.trim() === ''
+      ? ''
+      : ` para ${cotizacion.proyecto.descripcion.trim().replace(/[.\s]+$/, '')}`
+  return `Hola ${nombreCliente}, le comparto la cotización ${numero}${proyecto} por ${totalTexto} (${cotizacion.items.length} materiales), válida hasta el ${fechaVence}. Cualquier ajuste me avisa. — ${vendedor}, ${empresa}.`
 }

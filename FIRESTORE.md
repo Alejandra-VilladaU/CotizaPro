@@ -17,6 +17,7 @@ Base de datos: la predeterminada `(default)`, modo nativo.
 | `cotizaciones` | `{cotizacionId}` (`Q...`) | cotizaciones e historial | Administrador y el vendedor dueño |
 | `config` | `empresa` | razón social, NIT, logo, IVA | Administrador |
 | `consecutivos` | `cotizaciones` | último número de cotización emitido | cualquier perfil activo (solo hacia arriba) |
+| `asesorias` | `{conversacionId}` (`A...`) | historial del Asesor de proyectos (30 días) | Administrador y el vendedor dueño |
 
 Los identificadores los genera la app (por ejemplo `MLX1F2AB3CD`), no son autogenerados por
 Firestore, para que un mismo registro se pueda migrar desde el navegador sin duplicarse.
@@ -112,6 +113,9 @@ suyas; el administrador ve todos.
 | `pago` | objeto \| null | no | soporte del cobro cuando la cotización pasa a `Aceptada`: `{ fecha, metodo, monto, referencia, notas, registradoPor }`. Una cotización aceptada cuenta como pagada |
 | `stockDescontado` | boolean | no | `true` mientras las cantidades de la cotización están descontadas del inventario; evita descontar dos veces y permite devolverlas si se revierte el estado. Las cotizaciones anteriores a esta versión no lo traen y nunca movieron stock |
 | `autorizacionEdicion` | objeto \| null | sí | `{ por, uid, fecha }` que registra la autorización del administrador para editar una cotización ajena |
+| `proyecto` | objeto \| null | no | `{ descripcion, responsable }`: qué se va a construir y quién está a cargo en obra; encabeza el PDF |
+| `asesoria` | objeto \| null | no | `{ consulta, respuesta, fecha }` de la conversación con el Asesor de proyectos de la que salieron los materiales; se imprime en el PDF |
+| `duplicadaDe` | string \| null | no | referencia (`#1234` o `BOR-XXXXX`) de la cotización copiada con **Duplicar** |
 | `creada` | string ISO | sí | |
 | `emitida` | string ISO \| null | sí | fecha de generación; `null` en borradores |
 | `actualizada` | string ISO | sí | |
@@ -127,6 +131,7 @@ recalcula si cambia el inventario (la app ofrece un botón explícito para sincr
 | `precioUnitario` | number | precio realmente cotizado |
 | `cantidad` | number | |
 | `descuento` | number | porcentaje 0–100 de la línea |
+| `categoria` | string | categoría del material al cotizar; agrupa la cotización por capítulos (obra gris, acabados, instalaciones…). Las líneas anteriores no la traen y toman la del inventario |
 
 Ejemplo:
 
@@ -183,6 +188,21 @@ Al ser una app sin backend, la clave llega al navegador de cada usuario del equi
 Google Cloud a la *Generative Language API* y al dominio de la app (ver `ASESOR_IA.md`). Si se
 requiere que no salga del servidor, hay que moverla detrás de una Cloud Function.
 
+## `asesorias/{conversacionId}`
+
+Historial del Asesor de proyectos: una conversación por documento, para retomarla si el cliente
+vuelve o revisar qué recomendó el asesor. Las imágenes adjuntas no se guardan, solo cuántas había.
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `id` | string | igual al id del documento |
+| `vendedorUid` | string \| null | dueño de la conversación; las reglas se basan en él |
+| `vendedor` | string | nombre del vendedor |
+| `titulo` | string | primera consulta, recortada a 90 caracteres |
+| `mensajes` | array | `{ autor: 'usuario' \| 'asesor', texto, imagenes }` |
+| `creada` / `actualizada` | string ISO | |
+| `vence` | string ISO | `actualizada` + 30 días (`DIAS_HISTORIAL`); al abrir el historial la app borra las vencidas del usuario |
+
 ## `consecutivos/cotizaciones`
 
 Contador compartido del número de cotización:
@@ -217,6 +237,7 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 | `cotizaciones` | leer todas, editar y eliminar | solo las propias (`vendedorUid` = su uid) |
 | `config/empresa` y `config/ia` | leer y escribir | solo leer |
 | `consecutivos/cotizaciones` | leer, subir y borrar | leer y subir el contador |
+| `asesorias` | leer todas, editar y eliminar | crear, leer, editar y eliminar solo las propias (`vendedorUid` = su uid) |
 | `usuarios` | leer y administrar todos | solo su perfil; únicamente puede tocar `debeCambiarPassword` y `ultimoIngreso` |
 
 Todo acceso exige sesión iniciada y `activo == true` en el perfil.
