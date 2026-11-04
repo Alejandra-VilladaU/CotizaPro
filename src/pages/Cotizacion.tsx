@@ -265,6 +265,11 @@ export default function CotizacionPage() {
   const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(() =>
     (location.state as { compartir?: boolean } | null)?.compartir === true ? 'emitida' : null,
   )
+  // Se consume una sola vez: recargar la página no debe volver a abrir Compartir.
+  useEffect(() => {
+    if ((location.state as { compartir?: boolean } | null)?.compartir === true)
+      navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, navigate])
   const [pagoAbierto, setPagoAbierto] = useState(false)
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
