@@ -17,6 +17,19 @@ Límites de la capa gratuita (los fija Google y cambian con el tiempo): del orde
 de consultas por minuto y algunos cientos por día para `gemini-3.6-flash`. Si se agota, la app
 muestra "Se agotó la cuota gratuita de Gemini por ahora".
 
+### Cuando Gemini está saturado (error 503)
+
+En horas pico Google responde 503 ("model overloaded") aunque la clave y la cuota estén bien.
+`preguntarIA()` lo maneja solo:
+
+1. Reintenta con el modelo configurado tras 1,5 s y 4 s.
+2. Si sigue saturado, consulta `GET /v1beta/models` y prueba hasta 2 modelos *flash* de texto
+   disponibles para la clave (primero los estables, luego los *preview*).
+3. Solo si todos fallan muestra "Gemini está saturado en este momento…".
+
+Los errores de clave, permisos o cuota (400, 403, 404, 429) no se reintentan. Si el 503 se
+repite a diario, cambia el modelo en **Ajustes → Asesor con IA** por uno estable.
+
 ## Configurar la clave (5 minutos, una sola vez)
 
 1. Entra a https://aistudio.google.com/app/apikey con la misma cuenta de Google.
