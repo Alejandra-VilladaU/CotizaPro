@@ -75,6 +75,8 @@ export type Pago = {
 export type Cotizacion = {
   id: string
   numero: number | null
+  /** Consecutivo del borrador (BOR-001…); se conserva al generar, pero manda `numero`. */
+  consecutivoBorrador?: number | null
   clienteId: string | null
   items: ItemCotizacion[]
   descuentoGlobal: number

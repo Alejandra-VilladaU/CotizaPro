@@ -100,7 +100,8 @@ suyas; el administrador ve todos.
 | Campo | Tipo | Obligatorio | Notas |
 | --- | --- | --- | --- |
 | `id` | string | sí | igual al id del documento |
-| `numero` | number \| null | sí | `null` mientras es borrador; se asigna al generarla |
+| `numero` | number \| null | sí | `null` mientras es borrador; se asigna al generarla con el consecutivo de `consecutivos/cotizaciones` |
+| `consecutivoBorrador` | number \| null | no | consecutivo del borrador (`BOR-001`…), reservado en `consecutivos/borradores` al crearlo; al generarse la referencia pasa a `#numero` |
 | `clienteId` | string \| null | sí | referencia a `clientes/{id}`; queda `null` si el cliente se elimina |
 | `items` | array | sí | líneas de la cotización (ver abajo) |
 | `descuentoGlobal` | number | sí | porcentaje 0–100 |
@@ -217,6 +218,10 @@ que emiten al mismo tiempo no pueden obtener el mismo consecutivo. Es necesario 
 vendedor no puede leer las cotizaciones de los demás y no podría calcular el máximo por su
 cuenta. Las reglas solo permiten subir el contador, nunca retrocederlo; al restablecer los datos
 el administrador lo borra y la numeración vuelve a empezar en 1001.
+
+`consecutivos/borradores` funciona igual para la referencia de los borradores (`BOR-001`,
+`BOR-002`…): se reserva al crear un borrador o duplicar una cotización y empieza en 1. Usa las
+mismas reglas de `consecutivos/{documento}`, así que no hay que publicar reglas nuevas.
 
 ## Relaciones
 

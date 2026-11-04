@@ -28,6 +28,9 @@ export const COLECCIONES = {
 /** Documento del consecutivo de cotizaciones: consecutivos/cotizaciones. */
 export const DOC_CONSECUTIVO = 'cotizaciones'
 
+/** Consecutivo propio de los borradores (BOR-001…): consecutivos/borradores. */
+export const DOC_CONSECUTIVO_BORRADOR = 'borradores'
+
 /** Documento único con los datos de la empresa: config/empresa. */
 export const DOC_EMPRESA = 'empresa'
 
@@ -173,6 +176,17 @@ export function backendFirestore(usuario: Usuario): BackendDatos {
         const snap = await tx.get(contador)
         const ultimo = snap.exists() ? Number(snap.data().ultimo ?? 0) : 0
         const siguiente = Math.max(ultimo, minimo, 1000) + 1
+        tx.set(contador, { ultimo: siguiente, actualizado: new Date().toISOString() })
+        return siguiente
+      })
+    },
+
+    siguienteBorrador: async (minimo) => {
+      const contador = doc(db(), COLECCIONES.consecutivos, DOC_CONSECUTIVO_BORRADOR)
+      return runTransaction(db(), async (tx) => {
+        const snap = await tx.get(contador)
+        const ultimo = snap.exists() ? Number(snap.data().ultimo ?? 0) : 0
+        const siguiente = Math.max(ultimo, minimo) + 1
         tx.set(contador, { ultimo: siguiente, actualizado: new Date().toISOString() })
         return siguiente
       })

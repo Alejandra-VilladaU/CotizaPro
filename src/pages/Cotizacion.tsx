@@ -1,6 +1,6 @@
 import { Copy, Printer, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   Avatar,
   Badge,
@@ -31,6 +31,7 @@ import {
   vence,
 } from '../lib/quote'
 import { useDatos } from '../lib/store'
+import { AYUDA_DUPLICAR_BORRADOR, useDuplicar } from '../lib/useDuplicar'
 import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
 
 export const ULTIMA_ABIERTA = 'cotizapro.ultimaAbierta'
@@ -251,14 +252,24 @@ export default function CotizacionPage() {
     puedeEditar,
     autorizarEdicion,
     esPropia,
-    duplicar,
   } = useDatos()
+  const duplicarConControl = useDuplicar()
   const { puede, usuario } = useAuth()
   const { id } = useParams()
   const navigate = useNavigate()
   const [abrirCliente, setAbrirCliente] = useState(false)
   /** 'emitida' abre el modal justo después de generar; al cerrarlo sigue en esta cotización. */
-  const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(null)
+  const location = useLocation()
+  // Al generar desde /cotizacion la ruta cambia a /cotizacion/:id y la página se vuelve a montar:
+  // el aviso de abrir Compartir viaja en el estado de la navegación.
+  const [compartir, setCompartir] = useState<'manual' | 'emitida' | null>(() =>
+    (location.state as { compartir?: boolean } | null)?.compartir === true ? 'emitida' : null,
+  )
+  // Se consume una sola vez: recargar la página no debe volver a abrir Compartir.
+  useEffect(() => {
+    if ((location.state as { compartir?: boolean } | null)?.compartir === true)
+      navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, navigate])
   const [pagoAbierto, setPagoAbierto] = useState(false)
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -286,8 +297,11 @@ export default function CotizacionPage() {
 
   // Al emitir, el borrador deja de serlo: la ruta pasa a apuntar a la cotización.
   const generar = (cotizacionId: string) => {
-    void generarCotizacion(cotizacionId).then(() => setCompartir('emitida'))
-    if (id === undefined) navigate(`/cotizacion/${cotizacionId}`, { replace: true })
+    void generarCotizacion(cotizacionId).then(() => {
+      if (id === undefined)
+        navigate(`/cotizacion/${cotizacionId}`, { replace: true, state: { compartir: true } })
+      else setCompartir('emitida')
+    })
   }
 
   const sugerencias = useMemo(() => {
@@ -371,8 +385,13 @@ export default function CotizacionPage() {
           {puede('cotizaciones.crear') && (
             <Boton
               tamano="sm"
-              title="Crea un borrador nuevo con los mismos materiales y datos del proyecto"
-              onClick={() => navigate(`/cotizacion/${duplicar(actual.id)}`)}
+              disabled={actual.estado === 'Borrador'}
+              title={
+                actual.estado === 'Borrador'
+                  ? AYUDA_DUPLICAR_BORRADOR
+                  : 'Crea un borrador nuevo con los mismos materiales y datos del proyecto'
+              }
+              onClick={() => duplicarConControl(actual)}
             >
               <Copy size={15} /> Duplicar
             </Boton>

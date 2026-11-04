@@ -46,11 +46,15 @@ export function itemDesdeMaterial(material: Material, cantidad: number): ItemCot
   }
 }
 
-/** Número de la cotización o, mientras es borrador, una referencia corta y estable. */
+/**
+ * Número de la cotización (#1043) o, mientras es borrador, su consecutivo de borrador (BOR-001).
+ * Los borradores creados antes del consecutivo usan el final de su id.
+ */
 export function referencia(cotizacion: Cotizacion): string {
-  return cotizacion.numero === null
-    ? `BOR-${cotizacion.id.slice(-5)}`
-    : `#${cotizacion.numero}`
+  if (cotizacion.numero !== null) return `#${cotizacion.numero}`
+  if (cotizacion.consecutivoBorrador != null)
+    return `BOR-${String(cotizacion.consecutivoBorrador).padStart(3, '0')}`
+  return `BOR-${cotizacion.id.slice(-5)}`
 }
 
 const normalizar = (texto: string): string =>
