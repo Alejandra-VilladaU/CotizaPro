@@ -26,7 +26,7 @@ cliente.
 | `/` | Buscar materiales por nombre, código o categoría; ver precio, unidad y stock; stepper de cantidad y "Agregar". |
 | `/cotizacion` | Cotización en curso (borrador): cliente, cantidades, precio editable, descuento por línea, descuento global, IVA, vigencia, notas, generar y compartir. |
 | `/cotizacion/:id` | Ver o editar una cotización específica. |
-| `/cotizaciones` | Historial general con KPIs (enviadas, aceptadas, por vencer, borradores), filtros por estado y acciones (PDF, duplicar, aceptar, rechazar). |
+| `/cotizaciones` | Historial general con KPIs (enviadas, aceptadas, por vencer, borradores), filtros por estado y acciones (PDF, aceptar, rechazar). |
 | `/clientes` | Lista de clientes con total cotizado y aceptadas; crear cliente. |
 | `/clientes/:id` | Historial de cotizaciones de ese cliente. |
 | `/inventario` | Administrar materiales: crear, editar, eliminar, importar CSV, alertas de stock. *(solo Administrador)* |

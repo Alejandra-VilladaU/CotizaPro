@@ -1,0 +1,118 @@
+codigo;nombre;categoria;unidad;precio;stock;stock_minimo;descripcion
+COD-8101;Cemento gris estructural 50 kg;Cemento;bulto;36500;120;30;Para concreto de columnas vigas y placas
+COD-8102;Mortero seco para pañete 40 kg;Cemento;bulto;19800;60;15;Mezcla lista para pañetar muros
+COD-8103;Cal hidratada 25 kg;Cemento;bulto;18500;30;8;Mejora la trabajabilidad de morteros y pañetes
+COD-8104;Acelerante de fraguado (galón);Cemento;unidad;38000;8;3;Aditivo para concreto y mortero en clima frío o desencofrado rápido
+COD-8201;Varilla corrugada 5/8 pulg x 6 m;Acero;unidad;45800;60;15;Refuerzo principal de vigas y columnas
+COD-8202;Varilla lisa 1/4 pulg x 6 m;Acero;unidad;7200;200;40;Para flejes y estribos
+COD-8203;Estribo figurado 3/8 pulg 15 x 15 cm;Acero;unidad;2100;500;100;Estribo listo para columnas y vigas
+COD-8204;Malla electrosoldada 4 mm 2,35 x 6 m;Acero;unidad;89000;30;8;Refuerzo de contrapisos y andenes
+COD-8205;Alambre galvanizado cal. 12;Acero;kg;9800;120;30;Amarres a la intemperie y cercas
+COD-8206;Perfil en C (correa) 100 mm x 6 m cal. 16;Acero;unidad;62000;30;8;Estructura liviana para cubiertas
+COD-8301;Arena de pega;Áridos;m3;52000;40;10;Arena para mortero de pega y pañete
+COD-8302;Gravilla 1/2 pulg;Áridos;m3;78000;25;8;Agregado para concreto de placas delgadas
+COD-8303;Base granular;Áridos;m3;58000;20;6;Relleno compactado bajo contrapisos y andenes
+COD-8401;Bloque de arcilla N.º 5;Mampostería;unidad;1650;3000;500;Muros divisorios y de cerramiento
+COD-8402;Ladrillo estructural 12 x 29 x 9 cm;Mampostería;unidad;2100;2000;400;Mampostería estructural y confinada
+COD-8403;Bloque de concreto 15 x 20 x 40;Mampostería;unidad;4200;600;150;Muros de carga y cerramientos
+COD-8404;Adoquín de concreto 20 x 10 x 6 cm;Mampostería;unidad;1100;3000;500;Pisos exteriores patios y garajes
+COD-8501;Teja de fibrocemento N.º 6;Cubiertas;unidad;38900;80;20;Cubierta para viviendas bodegas y patios
+COD-8502;Teja plástica traslúcida N.º 6;Cubiertas;unidad;52000;30;8;Entrada de luz natural en cubiertas
+COD-8503;Caballete para teja de fibrocemento;Cubiertas;unidad;18500;40;10;Remate de cumbrera
+COD-8504;Gancho para teja con capuchón;Cubiertas;unidad;1200;600;100;Fijación de tejas a la estructura
+COD-8505;Canal PVC para aguas lluvias x 3 m;Cubiertas;unidad;46000;20;5;Recolección de aguas lluvias
+COD-8601;Tubería PVC presión 3/4 pulg x 6 m;Hidráulico;unidad;21500;80;20;Acometidas y redes de agua fría
+COD-8602;Tubería CPVC agua caliente 1/2 pulg x 3 m;Hidráulico;unidad;18900;50;12;Redes de agua caliente
+COD-8603;Unión PVC presión 1/2 pulg;Hidráulico;unidad;900;600;100;Accesorio de empalme
+COD-8604;Tee PVC presión 1/2 pulg;Hidráulico;unidad;1500;400;80;Derivaciones de la red
+COD-8605;Adaptador macho PVC 1/2 pulg;Hidráulico;unidad;1100;400;80;Conexión a grifería y llaves
+COD-8606;Llave de paso 1/2 pulg;Hidráulico;unidad;24500;40;10;Corte de agua por zona
+COD-8607;Soldadura líquida PVC 1/4 gal;Hidráulico;unidad;38000;30;8;Pega tubería y accesorios PVC
+COD-8608;Limpiador PVC 1/4 gal;Hidráulico;unidad;26000;20;6;Prepara las uniones antes de soldar
+COD-8609;Cinta teflón 3/4 pulg;Hidráulico;unidad;1500;300;50;Sello de roscas
+COD-8610;Tanque plástico para agua 1000 L;Hidráulico;unidad;389000;4;2;Almacenamiento de agua potable
+COD-8701;Tubería sanitaria PVC 2 pulg x 6 m;Sanitario;unidad;32000;60;15;Desagües de lavamanos lavaplatos y duchas
+COD-8702;Codo sanitario PVC 4 pulg x 90°;Sanitario;unidad;9800;120;25;Cambios de dirección en desagües
+COD-8703;Yee sanitaria PVC 4 pulg;Sanitario;unidad;15800;60;15;Unión de ramales de desagüe
+COD-8704;Codo sanitario PVC 2 pulg x 90°;Sanitario;unidad;3200;200;40;Desagües secundarios
+COD-8705;Sifón de piso PVC 3 x 2 pulg;Sanitario;unidad;12500;60;15;Desagüe de duchas y patios
+COD-8706;Rejilla para sifón de piso 3 x 2 pulg;Sanitario;unidad;7500;80;20;Tapa del sifón de piso
+COD-8707;Sanitario de porcelana con tanque;Sanitario;unidad;285000;6;2;Aparato sanitario completo
+COD-8708;Lavamanos de porcelana de colgar;Sanitario;unidad;98000;6;2;Aparato para baños
+COD-8709;Grifería sencilla para lavamanos;Sanitario;unidad;68000;10;3;Grifo monocontrol básico
+COD-8801;Cable THHN 12 AWG;Eléctricos;ml;3200;800;200;Circuitos de tomacorrientes
+COD-8802;Cable THHN 14 AWG;Eléctricos;ml;2300;800;200;Circuitos de iluminación
+COD-8803;Caja octagonal PVC;Eléctricos;unidad;1400;300;60;Salidas de techo para iluminación
+COD-8804;Curva conduit PVC 1/2 pulg;Eléctricos;unidad;900;300;60;Cambios de dirección en ductería
+COD-8805;Tablero de 4 circuitos con puerta;Eléctricos;unidad;89000;10;3;Protección de los circuitos de la vivienda
+COD-8806;Cinta aislante negra 18 m;Eléctricos;unidad;3800;150;30;Aislamiento de empalmes
+COD-9301;Bombillo LED 9 W luz blanca E27;Eléctricos;unidad;7500;150;30;Iluminación básica de la obra terminada
+COD-9308;Roseta de porcelana E27;Eléctricos;unidad;3200;150;30;Portabombillo para salidas de techo
+COD-9310;Interruptor sencillo;Eléctricos;unidad;7900;120;25;Control de un punto de luz
+COD-9311;Interruptor doble;Eléctricos;unidad;12500;80;20;Control de dos puntos de luz
+COD-9312;Interruptor conmutable;Eléctricos;unidad;11900;60;15;Control de un punto de luz desde dos sitios
+COD-9313;Cable dúplex 2x16 AWG;Eléctricos;ml;2600;500;100;Salidas de iluminación
+COD-9314;Caja de paso plástica 2x4;Eléctricos;unidad;900;400;80;Caja para tomas e interruptores
+COD-8901;Pegante para porcelanato 25 kg;Acabados;bulto;48000;60;15;Pega porcelanato y formatos grandes
+COD-8902;Porcelanato piso 60 x 60;Acabados;m2;59900;300;60;Piso para interiores
+COD-8903;Cerámica pared 25 x 40;Acabados;m2;29900;300;60;Enchape de baños y cocinas
+COD-8904;Guardaescoba cerámico 8 x 45 cm;Acabados;unidad;4200;400;80;Remate entre piso y muro
+COD-8905;Crucetas niveladoras 3 mm (bolsa 100);Acabados;unidad;4500;80;20;Separación uniforme de juntas
+COD-8906;Perfil esquinero PVC para enchape 2,5 m;Acabados;unidad;6800;100;20;Protege y remata las esquinas del enchape
+COD-8907;Masilla para drywall (cuñete 5 gal);Acabados;unidad;72000;15;4;Tratamiento de juntas y masillado
+COD-8908;Paral metálico para drywall 2,44 m;Acabados;unidad;11800;150;30;Estructura vertical de muros livianos
+COD-8909;Canal metálica para drywall 2,44 m;Acabados;unidad;9800;150;30;Estructura de piso y techo de muros livianos
+COD-8910;Cinta de papel para juntas drywall 75 m;Acabados;unidad;9500;40;10;Refuerzo de juntas
+COD-8911;Placa de fibrocemento 8 mm 1,22 x 2,44 m;Acabados;unidad;69000;30;8;Muros livianos en zonas húmedas y fachadas
+COD-8912;Estuco acrílico para exteriores (cuñete);Acabados;unidad;145000;10;3;Resane y acabado de fachadas
+COD-8913;Yeso en polvo 25 kg;Acabados;bulto;23500;30;8;Resanes y filos
+COD-9101;Pintura vinilo tipo 2 blanco (cuñete 5 gal);Pinturas;unidad;185000;10;3;Vinilo económico para interiores y obra
+COD-9102;Pintura vinilo tipo 1 color (galón);Pinturas;unidad;84000;24;6;Vinilo lavable para interiores
+COD-9103;Pintura para fachadas (galón);Pinturas;unidad;115000;12;4;Pintura acrílica para exteriores
+COD-9104;Esmalte sintético blanco (galón);Pinturas;unidad;98000;12;4;Para rejas puertas metálicas y marcos
+COD-9105;Anticorrosivo gris (galón);Pinturas;unidad;72000;12;4;Base para estructuras y rejas metálicas
+COD-9106;Sellador para muros (galón);Pinturas;unidad;58000;12;4;Prepara el muro antes de pintar
+COD-9110;Thinner (galón);Pinturas;unidad;36000;12;4;Disolvente para esmalte y anticorrosivo
+COD-9107;Impermeabilizante para muros y techos (galón);Impermeabilizantes y sellantes;unidad;89000;10;3;Protección contra humedad y filtraciones
+COD-8921;Aditivo impermeabilizante integral (galón);Impermeabilizantes y sellantes;unidad;42000;12;4;Se mezcla con concreto o mortero
+COD-8922;Manto asfáltico 3 mm (rollo 10 m²);Impermeabilizantes y sellantes;unidad;189000;8;3;Impermeabilización de placas y terrazas
+COD-8923;Sellante de poliuretano 300 ml;Impermeabilizantes y sellantes;unidad;26000;30;8;Sello de juntas de dilatación y fachadas
+COD-9404;Silicona acética transparente 280 ml;Impermeabilizantes y sellantes;unidad;14500;40;10;Sello de aparatos sanitarios y ventanas
+COD-9201;Brocha de 1 pulg;Herramientas de pintura;unidad;3500;40;10;Detalles y filos
+COD-9202;Brocha de 2 pulg;Herramientas de pintura;unidad;5500;40;10;Uso general
+COD-9203;Brocha de 3 pulg;Herramientas de pintura;unidad;7800;30;8;Superficies medianas
+COD-9204;Brocha de 4 pulg;Herramientas de pintura;unidad;10500;30;8;Muros y fachadas
+COD-9205;Rodillo de felpa 9 pulg con marco;Herramientas de pintura;unidad;18500;30;8;Muros y techos
+COD-9206;Repuesto de rodillo de felpa 9 pulg;Herramientas de pintura;unidad;11000;30;8;Repuesto del rodillo
+COD-9208;Bandeja plástica para pintura;Herramientas de pintura;unidad;8500;30;8;Carga del rodillo
+COD-9209;Extensión telescópica para rodillo 1,5 m;Herramientas de pintura;unidad;24000;15;4;Pintar techos y muros altos
+COD-9210;Cinta de enmascarar 1 pulg x 40 m;Herramientas de pintura;unidad;4500;60;15;Perfilar y proteger
+COD-9211;Cinta azul de pintor 1-1/2 pulg x 55 m;Herramientas de pintura;unidad;12500;30;8;Perfilado limpio sin dejar residuo
+COD-9212;Plástico protector 4 x 5 m;Herramientas de pintura;unidad;6500;40;10;Protege pisos y muebles
+COD-9213;Lija de agua n.º 120;Herramientas de pintura;unidad;1500;100;25;Lijado de estuco y masilla
+COD-9215;Espátula metálica 4 pulg;Herramientas de pintura;unidad;8500;25;6;Aplicar y resanar estuco
+COD-9216;Llana metálica lisa;Herramientas de obra;unidad;19500;20;5;Pañetes y estuco
+COD-8001;Palustre de 8 pulg;Herramientas de obra;unidad;18500;20;5;Pega de mampostería y mezcla
+COD-8002;Llana dentada 1/4 pulg;Herramientas de obra;unidad;21000;15;4;Aplicar pegante de enchape
+COD-8003;Nivel de burbuja 24 pulg;Herramientas de obra;unidad;32000;10;3;Nivelar muros y pisos
+COD-8004;Flexómetro 5 m;Herramientas de obra;unidad;18900;20;5;Medición en obra
+COD-8005;Hilo de nylon para albañil 100 m;Herramientas de obra;unidad;6500;30;8;Alinear hiladas de mampostería
+COD-8006;Balde plástico para obra 12 L;Herramientas de obra;unidad;7800;40;10;Transporte de mezcla y agua
+COD-8007;Carretilla metálica llanta neumática;Herramientas de obra;unidad;245000;4;2;Transporte de material en obra
+COD-8008;Pala cuadrada con cabo;Herramientas de obra;unidad;39000;10;3;Mezcla y cargue de áridos
+COD-8009;Martillo de uña 16 oz;Herramientas de obra;unidad;24500;15;4;Formaletas y clavado
+COD-8010;Cortadora manual de cerámica 60 cm;Herramientas de obra;unidad;189000;3;1;Corte de cerámica y porcelanato
+COD-8011;Disco de corte diamantado 4-1/2 pulg;Herramientas de obra;unidad;19500;25;6;Corte de concreto cerámica y ladrillo
+COD-8012;Mazo de goma;Herramientas de obra;unidad;15800;15;4;Asentar baldosas y adoquines
+COD-8013;Espátula de caucho para boquilla;Herramientas de obra;unidad;7900;20;5;Aplicar boquilla en juntas
+COD-8051;Guantes de carnaza (par);Seguridad industrial;unidad;8900;60;15;Protección de manos en obra
+COD-8052;Gafas de seguridad transparentes;Seguridad industrial;unidad;6500;40;10;Protección de ojos al cortar y mezclar
+COD-8053;Casco de seguridad;Seguridad industrial;unidad;21000;20;5;Protección de cabeza en obra
+COD-8054;Respirador desechable N95;Seguridad industrial;unidad;4800;100;25;Protección contra polvo de cemento y lijado
+COD-8055;Protector auditivo de inserción (par);Seguridad industrial;unidad;1800;100;25;Protección al cortar y pulir
+COD-8081;Puntilla con cabeza 2 pulg;Fijaciones y consumibles;kg;8900;80;20;Formaletas y amarres en madera
+COD-8082;Clavo de acero para concreto 2 pulg (caja 100);Fijaciones y consumibles;unidad;9800;30;8;Fijación a concreto y mampostería
+COD-8083;Chazo plástico 1/4 pulg con tornillo (bolsa 100);Fijaciones y consumibles;unidad;12500;30;8;Anclaje a muros
+COD-8084;Broca para concreto 1/4 pulg;Fijaciones y consumibles;unidad;5800;40;10;Perforación de muros y placas
+COD-8085;Tornillo para drywall 6 x 1 pulg (bolsa 100);Fijaciones y consumibles;unidad;5500;100;20;Fija placas a la estructura metálica
+COD-8086;Polietileno negro para obra;Fijaciones y consumibles;ml;3500;200;50;Curado de concreto y protección de material

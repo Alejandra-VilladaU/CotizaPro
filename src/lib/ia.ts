@@ -90,17 +90,20 @@ const catalogo = (materiales: Material[]): string =>
 
 /** Respuesta fija para lo que queda fuera del alcance; la app usa el mismo texto al bloquear. */
 export const FUERA_DE_ALCANCE =
-  'Solo puedo asesorarte en proyectos de construcción, remodelación y carpintería, y en los materiales de la ferretería.'
+  'Solo puedo asesorarte en obras de construcción y remodelación, y en los materiales que vende la comercializadora.'
 
 const instruccion = (materiales: Material[]): string => `
-Eres el asesor técnico de CotizaPro, una app de cotización de materiales de construcción y
-carpintería en Colombia. Ayudas a vendedores y administradores a diseñar proyectos (muebles de
-cocina, mesas, closets, obras menores) y a calcular los materiales necesarios.
+Eres el asesor técnico de CotizaPro en una comercializadora de materiales de construcción en
+Colombia. Ayudas a vendedores y administradores a planear obras y remodelaciones y a calcular los
+materiales que el cliente debe comprar: obra gris (cimientos, placas, columnas, muros, pañetes),
+mampostería, cubiertas, instalaciones hidráulicas, sanitarias y eléctricas de la obra, y
+acabados (pisos, enchapes, drywall, estuco, pintura e impermeabilización).
 
-Alcance: solo construcción, remodelación, carpintería, ferretería y el uso de los materiales del
-catálogo. Si la consulta es de otro tema (geografía, salud, tareas escolares, política,
-programación, recetas, texto general), responde ÚNICAMENTE esta frase, sin añadir nada más ni la
-sección de materiales: "${FUERA_DE_ALCANCE}"
+Alcance: solo obras de construcción y remodelación, y el uso de los materiales que vende la
+comercializadora. No diseñas muebles ni carpintería (cocinas integrales, closets, mesas), ni
+decoración, ni electrodomésticos. Si la consulta es de esos temas o de cualquier otro (geografía,
+salud, tareas escolares, política, programación, recetas, texto general), responde ÚNICAMENTE
+esta frase, sin añadir nada más ni la sección de materiales: "${FUERA_DE_ALCANCE}"
 
 No das precios de proveedores externos, descuentos ni condiciones comerciales, y no conoces los
 clientes, usuarios ni cotizaciones del sistema: solo ves el catálogo de abajo. Si el proyecto
@@ -113,14 +116,16 @@ Reglas:
 - Calcula cantidades explicando el criterio (área, perímetro, número de piezas, desperdicio).
 - Recomienda materiales del catálogo de abajo cuando existan; si falta algo, dilo con claridad.
 - Los precios son en pesos colombianos y son de referencia.
-- Piensa en el espacio terminado, no solo en la obra: además de lo indispensable para construir,
-  propón los complementarios que el cliente probablemente también necesite para dejarlo listo,
-  aunque no los haya pedido. Por ejemplo: pintura, sellador, estuco, laca o barniz para el
-  acabado; brochas, rodillos, bandejas, cinta de enmascarar para perfilar, lijas y plástico
-  protector para aplicarlo; luminarias, bombillos o cintas LED, interruptores y cable para
-  iluminar; manijas, tiradores, siliconas u otros accesorios. Elige solo los que tengan sentido
-  para ese proyecto (entre 3 y 8), calcula sus cantidades con el mismo criterio (área a pintar y
-  rendimiento, número de puntos de luz, etc.) y explica en una o dos frases por qué los sugieres.
+- Además de lo indispensable, propón los complementarios que el cliente probablemente también
+  compre para terminar esa misma obra, aunque no los haya pedido, siempre dentro de lo que vende
+  una comercializadora de materiales de construcción. Por ejemplo: impermeabilizante, sellador,
+  estuco o pintura para proteger y terminar; pegante, boquilla, crucetas y esquineros para un
+  enchape; soldadura, limpiador y teflón para una instalación hidráulica; cinta aislante, cajas y
+  curvas para una eléctrica; herramientas de obra (palustre, llana, nivel, balde, brochas,
+  rodillos) y elementos de protección (guantes, gafas, tapabocas). No sugieras muebles, herrajes
+  de carpintería, decoración ni iluminación decorativa. Elige solo los que tengan sentido para
+  ese proyecto (entre 3 y 6), prefiere los del catálogo, calcula sus cantidades con el mismo
+  criterio (área y rendimiento, número de puntos, etc.) y explica en una o dos frases por qué.
 - Cuando la consulta sí sea del alcance, cierra SIEMPRE con estas dos secciones, en este orden,
   una línea por material y sin texto extra:
 
@@ -133,7 +138,7 @@ CODIGO x CANTIDAD | nombre del material
 NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
 
 - MATERIALES SUGERIDOS lleva solo lo indispensable para ejecutar lo consultado; MATERIALES
-  COMPLEMENTARIOS, los acabados, herramientas de aplicación, iluminación y accesorios opcionales.
+  COMPLEMENTARIOS, la protección, los acabados, las herramientas de obra y los consumibles opcionales.
   No repitas un material en las dos secciones.
 - En ambas secciones usa el CODIGO tal como aparece en el catálogo; nunca inventes códigos.
 - Si el proyecto necesita un material que NO está en el catálogo, inclúyelo igual en la lista con
@@ -307,27 +312,27 @@ const sinTildes = (texto: string): string =>
   texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 /**
- * Vocabulario del negocio: obra, carpintería, ferretería y la operación de CotizaPro. Es
+ * Vocabulario del negocio: obra, remodelación, materiales de construcción y la operación de CotizaPro. Es
  * deliberadamente amplio, porque rechazar una consulta legítima molesta más que dejar pasar una
  * dudosa: el prompt la rechaza igual del otro lado.
  */
 const PALABRAS_DOMINIO = sinTildes(
   `construccion construir obra remodelacion remodelar reforma reparar arreglar instalar instalacion
    montar armar ensamblar cortar fundir pegar sellar pintar lijar soldar excavar
-   carpinteria ebanisteria albanil plomeria electricidad ferreteria herramienta taladro sierra
-   mueble muebles cocina closet mesa escritorio biblioteca repisa estante cajon puerta porton
+   albanil albanileria plomeria electricidad ferreteria herramienta taladro pulidora
+   cocina puerta porton
    ventana marco baranda escalera reja division fachada piso pisos enchape baldosa ceramica
    porcelanato guardaescoba muro muros pared paredes techo cielo cubierta teja columna viga losa
    cimiento placa bano banos lavamanos sanitario ducha griferia lavaplatos meson
    cemento concreto mortero arena gravilla triturado ladrillo bloque adoquin varilla malla
-   hierro acero aluminio lamina madera aglomerado triplex formica melamina tablero liston
-   tornillo tornillos clavo clavos puntilla bisagra chapa cerradura riel perfil angulo platina
+   hierro acero aluminio lamina fibrocemento estribo pañete panete contrapiso andén anden
+   tornillo tornillos clavo clavos puntilla chazo chapa cerradura perfil angulo platina
    tubo tuberia codo union llave cable alambre interruptor toma breaker luminaria bombillo
    pintura esmalte vinilo estuco masilla barniz laca sellante silicona pegante impermeabilizante
    brocha brochas rodillo rodillos bandeja cinta enmascarar perfilar thinner
-   iluminacion iluminar luz luces lampara lamparas led bombilla bombillos panel reflector
-   decorar decoracion acabados habitacion alcoba sala comedor terraza patio garaje oficina local
-   drywall superboard yeso icopor lija disco broca guante casco
+   iluminacion luz bombilla bombillos roseta tablero circuito
+   acabados habitacion alcoba sala comedor terraza patio garaje oficina local
+   drywall superboard yeso icopor lija disco broca guante guantes casco gafas tapabocas palustre llana nivel
    humedad gotera goteras filtracion acabado medida medidas metro metros area perimetro
    cantidad cantidades rendimiento desperdicio
    material materiales insumo insumos inventario stock catalogo precio precios costo presupuesto
@@ -377,7 +382,7 @@ export type GrupoMateriales = {
 export type Recomendacion = {
   /** Lo indispensable para ejecutar lo consultado. */
   necesarios: GrupoMateriales
-  /** Acabados, herramientas de aplicación, iluminación y accesorios opcionales. */
+  /** Protección, acabados, herramientas de obra y consumibles opcionales para la misma obra. */
   complementarios: GrupoMateriales
 }
 

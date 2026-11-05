@@ -116,7 +116,6 @@ suyas; el administrador ve todos.
 | `autorizacionEdicion` | objeto \| null | sí | `{ por, uid, fecha }` que registra la autorización del administrador para editar una cotización ajena |
 | `proyecto` | objeto \| null | no | `{ descripcion, responsable }`: qué se va a construir y quién está a cargo en obra; encabeza el PDF |
 | `asesoria` | objeto \| null | no | `{ consulta, respuesta, fecha }` de la conversación con el Asesor de proyectos de la que salieron los materiales; se imprime en el PDF |
-| `duplicadaDe` | string \| null | no | referencia (`#1234` o `BOR-XXXXX`) de la cotización copiada con **Duplicar** |
 | `creada` | string ISO | sí | |
 | `emitida` | string ISO \| null | sí | fecha de generación; `null` en borradores |
 | `actualizada` | string ISO | sí | |
@@ -220,7 +219,7 @@ cuenta. Las reglas solo permiten subir el contador, nunca retrocederlo; al resta
 el administrador lo borra y la numeración vuelve a empezar en 1001.
 
 `consecutivos/borradores` funciona igual para la referencia de los borradores (`BOR-001`,
-`BOR-002`…): se reserva al crear un borrador o duplicar una cotización y empieza en 1. Usa las
+`BOR-002`…): se reserva al crear un borrador y empieza en 1. Usa las
 mismas reglas de `consecutivos/{documento}`, así que no hay que publicar reglas nuevas.
 
 ## Relaciones

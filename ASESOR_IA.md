@@ -1,11 +1,12 @@
 # Asesor de proyectos con IA
 
 El módulo **Asesor de proyectos** (`/asesor`) es un chat dentro de CotizaPro donde el vendedor o
-el administrador describe un proyecto ("¿cómo construyo un mueble de cocina de 2,40 m?"), adjunta
+el administrador describe una obra ("¿cuántos bloques necesito para un muro de 4 × 2,40 m?"), adjunta
 fotos, planos o dibujos a mano, y recibe medidas, pasos y la lista de materiales **del inventario
 real**, con un botón para pasarlos a la cotización en curso. Además de lo indispensable, propone
-**materiales complementarios** para dejar el espacio terminado: pintura y sellador, brochas,
-rodillos y cinta para perfilar, iluminación y accesorios.
+**materiales complementarios** para terminar esa misma obra, siempre dentro de lo que vende una
+comercializadora de materiales de construcción: impermeabilizantes y sellantes, acabados,
+herramientas de obra, consumibles y elementos de protección.
 
 ## Por qué Google Gemini
 
@@ -70,14 +71,16 @@ Function que haga de intermediaria; el resto del módulo no cambia.
   NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
   ```
 
-  *Sugeridos* es lo indispensable para ejecutar lo consultado. *Complementarios* son entre 3 y 8
-  materiales opcionales que el cliente probablemente también necesite para terminar el espacio:
-  acabados (pintura, sellador, estuco, laca), herramientas de aplicación (brochas, rodillos,
-  bandejas, cinta de enmascarar, lijas, plástico protector), iluminación (bombillos, paneles o
-  cintas LED, interruptores, cable) y accesorios (manijas, bisagras, silicona). El asesor explica
-  en una o dos frases por qué los propone y calcula sus cantidades con el mismo criterio.
+  *Sugeridos* es lo indispensable para ejecutar lo consultado. *Complementarios* son entre 3 y 6
+  materiales opcionales que el cliente probablemente también compre para terminar esa obra:
+  protección (impermeabilizante, sellador), acabados (estuco, pintura; pegante, boquilla,
+  crucetas y esquineros en un enchape), consumibles de la instalación (soldadura PVC, teflón,
+  cinta aislante, cajas), herramientas de obra (palustre, llana, nivel, balde, brochas, rodillos)
+  y elementos de protección (guantes, gafas, tapabocas). No propone muebles, herrajes de
+  carpintería, decoración ni iluminación decorativa. Explica en una o dos frases por qué los
+  propone y calcula sus cantidades con el mismo criterio.
 - `recomendacion()` cruza cada bloque con el inventario y la página los muestra en dos tarjetas,
-  **Materiales para este proyecto** y **Complementarios para el acabado**, cada una con su
+  **Materiales para este proyecto** y **Complementarios para la obra**, cada una con su
   subtotal. Los materiales del catálogo traen precio, cantidad sugerida editable, botón
   **Agregar** (avisa si la cantidad supera el stock) y **Agregar todos**; los que la ferretería
   no tiene se marcan como **Falta** para conseguirlos aparte o cargarlos al inventario. Si el
@@ -96,23 +99,30 @@ Function que haga de intermediaria; el resto del módulo no cambia.
   cotización la muestra en la tarjeta **Asesoría del proyecto** y el PDF la imprime como valor
   agregado; el vendedor puede quitarla mientras la cotización sea borrador.
 
-## Inventario sugerido para los complementarios
+## Inventario sugerido para la comercializadora
 
 El asesor solo puede proponer con código lo que exista en el inventario. El archivo
-[`materiales-complementarios.csv`](./materiales-complementarios.csv) trae pinturas, herramientas
-de pintura, iluminación y herrajes listos para cargar desde **Inventario → Importar CSV** (usa
-`;` como separador). Precios, stock y stock mínimo son de referencia: ajústalos antes o después
-de importar. Las filas con un código que ya exista actualizan ese material, así que revisa que
-los códigos `COD-9101` en adelante no estén ocupados.
+[`materiales-construccion.csv`](./materiales-construccion.csv) trae 117 materiales de obra
+gris, acero, mampostería, cubiertas, hidráulica, sanitarios, eléctricos de obra, acabados,
+pinturas, impermeabilizantes, herramientas, fijaciones y seguridad industrial, listos para cargar
+desde **Inventario → Importar CSV** (usa `;` como separador). Precios, stock y stock mínimo son
+de referencia: ajústalos antes o después de importar. Las filas con un código que ya exista
+actualizan ese material: los códigos `COD-91xx` a `COD-94xx` que se conservan de la lista
+anterior se actualizan, y los nuevos van de `COD-8001` a `COD-8923`. De la lista anterior se
+retiraron laca, sellador y masilla para madera, lija para madera, mini rodillo, paneles y cintas
+LED, reflector, sensor de movimiento y herrajes de mueble: si ya los importaste, desactívalos en
+el inventario.
 
 ## Alcance del asesor
 
-**Sí responde:** diseño y dimensionamiento de proyectos de construcción, remodelación y
-carpintería; cálculo de cantidades (área, perímetro, piezas, desperdicio); lectura de fotos,
+**Sí responde:** planeación y dimensionamiento de obras de construcción y remodelación (obra
+gris, mampostería, cubiertas, instalaciones hidráulicas, sanitarias y eléctricas, pisos, enchapes,
+drywall, pintura e impermeabilización); cálculo de cantidades (área, perímetro, piezas, desperdicio); lectura de fotos,
 planos o dibujos; uso, rendimiento e instalación de los materiales; y recomendación de materiales
 del catálogo.
 
-**No responde:** temas ajenos al negocio (geografía, salud, tareas escolares, política,
+**No responde:** diseño de muebles o carpintería (cocinas integrales, closets, mesas),
+decoración, y temas ajenos al negocio (geografía, salud, tareas escolares, política,
 programación, texto general); precios de proveedores externos, descuentos o condiciones
 comerciales; y datos de clientes, usuarios o cotizaciones, porque solo ve el catálogo. Ante un
 cálculo estructural (vigas, columnas, cimentaciones) o instalaciones de gas, advierte que lo
