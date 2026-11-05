@@ -12,11 +12,12 @@ cliente.
   el equipo y sincronizados en tiempo real (colecciones documentadas en
   [FIRESTORE.md](FIRESTORE.md)). Sin `.env` el modo demo los guarda en `localStorage`
   (clave `cotizapro.v1`) con catálogo de 30 materiales, 5 clientes y 8 cotizaciones.
-- **Asesor con IA:** chat que diseña proyectos (mesas, muebles de cocina, closets), acepta fotos,
+- **Asesor con IA:** chat que asesora en el diseño de proyectos (tipo y cantidad de materiales, contruccion e ideas de proyectos) acepta fotos,
   planos y dibujos, y propone materiales del inventario para pasarlos a la cotización. Usa Google
   Gemini con su capa gratuita (ver [ASESOR_IA.md](ASESOR_IA.md)).
 - **Despliegue:** sitio estático; el único servicio externo es Firebase (Authentication +
-  Firestore). Publicación desde GitHub en [PUBLICAR.md](PUBLICAR.md).
+  Firestore). Publicación desde GitHub en [PUBLICAR.md](PUBLICAR.md). Todos los servicios de terceros se usan en su version gratuita, cuando la
+  aplicación avance o llegue a su estado productivo se incorporaran los servicios pagos correspondientes a las funcionalidades que requiera la aplicación.
 
 ## Pantallas
 
@@ -93,23 +94,13 @@ cp .env.example .env   # config web de Firebase
 
 Sin `.env` la app funciona en **modo demo local** (usuarios en `localStorage`,
 `admin@cotizapro.co` / `Admin1234` y `vendedor@cotizapro.co` / `Vendedor1234`). Para el login
-real, sigue [FIREBASE.md](./FIREBASE.md): crear el proyecto, habilitar Email/Password, publicar
-`firestore.rules` y crear el primer administrador. Las colecciones de datos y sus permisos están
-en [FIRESTORE.md](./FIRESTORE.md); el catálogo inicial se carga desde **Ajustes → Almacenamiento
-de los datos**.
+real, sigue se requiere los datos suministrados por nosotros los creadores de la aplicación.
 
 ## Uso local
 
-Para instalarla y usarla en tu propio computador (modo demo, conectada a tu Firebase o compartida
+Para instalarla y usarla en nuestro computador (modo demo, conectada a Firebase o compartida
 en la red del negocio), ver **[LOCAL.md](./LOCAL.md)**.
 
-## Despliegue
-
-Para publicar desde GitHub con HTTPS y dominio gratis (Firebase Hosting o Vercel, con deploy
-automático en cada push), ver **[PUBLICAR.md](./PUBLICAR.md)**.
-
-Ver **[DESPLIEGUE.md](./DESPLIEGUE.md)** — Docker + Nginx, VPS con dominio y HTTPS,
-Vercel/Netlify, subcarpeta, actualización y respaldo de datos.
 
 ## Limitaciones actuales
 
