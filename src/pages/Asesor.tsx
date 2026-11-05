@@ -33,10 +33,10 @@ import { useDatos } from '../lib/store'
 import type { Asesoria } from '../lib/types'
 
 const EJEMPLOS = [
-  '¿Cómo construyo un mueble de cocina de 2,40 m con dos puertas?',
-  'Necesito una mesa de comedor de 1,60 × 0,90 m en madera: ¿qué materiales llevo?',
-  'Adjunto el dibujo de un closet: dime medidas y materiales.',
-  'Quiero remodelar y pintar una habitación de 3 × 4 m: ¿qué necesito?',
+  '¿Cuántos bloques, arena y cemento necesito para un muro de 4 × 2,40 m?',
+  'Voy a fundir una placa de contrapiso de 5 × 6 m y 8 cm de espesor: ¿qué materiales llevo?',
+  'Quiero enchapar un baño de 2 × 1,5 m, piso y muros hasta 1,80 m: ¿qué necesito?',
+  'Adjunto la foto de una pared con humedad: ¿cómo la reparo y la pinto?',
 ]
 
 const nuevoId = (): string => Math.random().toString(36).slice(2)
@@ -64,7 +64,7 @@ const PASOS = [
   'Analizando el proyecto…',
   'Calculando medidas y cantidades…',
   'Buscando los materiales en el inventario…',
-  'Eligiendo complementarios para el acabado…',
+  'Eligiendo complementarios para la obra…',
   'Armando la respuesta…',
 ]
 
@@ -268,8 +268,8 @@ function Sugerencias({ lista, asesoria }: { lista: Recomendacion; asesoria: Ases
       {!vacio(complementarios) && (
         <div className={vacio(necesarios) ? '' : 'border-t border-line pt-3'}>
           <Grupo
-            titulo="Complementarios para el acabado"
-            ayuda="Pintura, herramientas, iluminación y accesorios para dejar el espacio listo. Son opcionales: ofrécelos al cliente."
+            titulo="Complementarios para la obra"
+            ayuda="Protección, acabados, herramientas y consumibles para terminar la obra. Son opcionales: ofrécelos al cliente."
             grupo={complementarios}
             {...comunes}
           />
@@ -431,9 +431,9 @@ export default function Asesor() {
             Asesor de proyectos
           </h1>
           <p className="mt-0.5 text-sm text-muted">
-            Pregunta cómo construir un mueble u obra, adjunta fotos o dibujos y pasa los
-            materiales a la cotización. Solo responde temas de construcción, remodelación,
-            carpintería y los materiales de la ferretería.
+            Pregunta cómo ejecutar una obra o remodelación, adjunta fotos o planos y pasa los
+            materiales a la cotización. Solo responde temas de construcción y remodelación, y
+            los materiales que vende la comercializadora.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

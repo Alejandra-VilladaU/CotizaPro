@@ -94,8 +94,6 @@ export type Cotizacion = {
   stockDescontado?: boolean
   proyecto?: Proyecto | null
   asesoria?: Asesoria | null
-  /** Referencia de la cotización de la que se copió, si es un duplicado. */
-  duplicadaDe?: string | null
   creada: string
   emitida: string | null
   actualizada: string

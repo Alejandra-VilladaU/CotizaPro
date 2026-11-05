@@ -11,7 +11,7 @@ import { useAuth } from './auth'
 import { backendLocalDatos, type BackendDatos, type Datos } from './datosApi'
 import { backendFirestore } from './datosFirestore'
 import { firebaseHabilitado } from './firebase'
-import { estaVencida, itemDesdeMaterial, referencia } from './quote'
+import { estaVencida, itemDesdeMaterial } from './quote'
 import { CLIENTES_SEED, COTIZACIONES_SEED, EMPRESA_SEED, MATERIALES_SEED } from './seed'
 import type { Faltante } from './inventario'
 import type { Asesoria, Cliente, Cotizacion, Empresa, Material, Pago } from './types'
@@ -113,13 +113,6 @@ type Contexto = {
   cambiarEstado: (id: string, estado: Cotizacion['estado']) => Faltante[]
   /** Registra el pago de una cotización, la deja como Aceptada y descuenta el inventario. */
   registrarPago: (id: string, pago: Omit<Pago, 'registradoPor'>) => Faltante[]
-  /**
-   * Crea un borrador copiando una cotización ya generada. Devuelve null si el origen sigue en
-   * borrador; si ya hay una copia sin generar de ese origen, devuelve esa en vez de otra nueva.
-   */
-  duplicar: (id: string) => string | null
-  /** Borrador propio, aún sin generar, que se copió de esa cotización. */
-  copiaPendiente: (id: string) => Cotizacion | undefined
   /** Guarda en el borrador en curso la asesoría de la que salieron sus materiales. */
   adjuntarAsesoria: (asesoria: Asesoria) => void
   eliminarCotizacion: (id: string) => void
@@ -289,7 +282,6 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         autorizacionEdicion: null,
         proyecto: null,
         asesoria: null,
-        duplicadaDe: null,
         creada: ahora,
         emitida: null,
         actualizada: ahora,
@@ -314,15 +306,6 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       const reservado = await backend.siguienteBorrador(maximo).catch(() => null)
       const consecutivo = reservado ?? maximo + 1
       mapear(id, (c) => ({ ...c, consecutivoBorrador: c.consecutivoBorrador ?? consecutivo }))
-    }
-
-    const copiaPendiente = (id: string): Cotizacion | undefined => {
-      const origen = cotizacion(id)
-      if (origen === undefined || origen.numero === null) return undefined
-      const ref_ = referencia(origen)
-      return ref.current.cotizaciones.find(
-        (c) => c.estado === 'Borrador' && c.duplicadaDe === ref_ && esPropia(c),
-      )
     }
 
     const asegurarBorrador = (): Cotizacion => {
@@ -532,45 +515,6 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
         return faltantes
       },
 
-      copiaPendiente,
-
-      duplicar: (id) => {
-        const origen = cotizacion(id)
-        if (origen === undefined || origen.estado === 'Borrador') return null
-        const pendiente = copiaPendiente(id)
-        if (pendiente !== undefined) {
-          aplicar((d) => ({ ...d, borradorId: pendiente.id }))
-          return pendiente.id
-        }
-        const ahora = new Date().toISOString()
-        const copia: Cotizacion = {
-          ...origen,
-          id: nuevoId('Q'),
-          numero: null,
-          consecutivoBorrador: null,
-          estado: 'Borrador',
-          vendedor: usuario?.nombre ?? origen.vendedor,
-          vendedorUid: usuario?.uid ?? origen.vendedorUid ?? null,
-          autorizacionEdicion: null,
-          pago: null,
-          stockDescontado: false,
-          proyecto: origen.proyecto == null ? null : { ...origen.proyecto },
-          asesoria: origen.asesoria == null ? null : { ...origen.asesoria },
-          duplicadaDe: referencia(origen),
-          creada: ahora,
-          emitida: null,
-          actualizada: ahora,
-          items: origen.items.map((i) => ({ ...i })),
-        }
-        aplicar((d) => ({
-          ...d,
-          cotizaciones: [copia, ...d.cotizaciones],
-          borradorId: copia.id,
-        }))
-        guardarCotizacion(copia)
-        void reservarBorrador(copia.id)
-        return copia.id
-      },
 
       adjuntarAsesoria: (asesoria) => {
         const destino = asegurarBorrador()

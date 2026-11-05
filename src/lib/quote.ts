@@ -66,10 +66,10 @@ const normalizar = (texto: string): string =>
  * de pintura" es herramienta, no acabado). Las categorías que no encajan conservan su nombre.
  */
 const CAPITULOS: { nombre: string; claves: string[] }[] = [
-  { nombre: 'Herramientas', claves: ['herramienta'] },
+  { nombre: 'Herramientas', claves: ['herramienta', 'seguridad', 'proteccion'] },
   {
     nombre: 'Obra gris',
-    claves: ['cemento', 'concreto', 'mortero', 'acero', 'arido', 'agregado', 'ladrillo', 'bloque', 'mamposteria', 'cubierta', 'teja', 'estructura', 'obra gris'],
+    claves: ['cemento', 'concreto', 'mortero', 'acero', 'arido', 'agregado', 'ladrillo', 'bloque', 'mamposteria', 'cubierta', 'teja', 'estructura', 'obra gris', 'fijacion'],
   },
   {
     nombre: 'Instalaciones hidráulicas',
@@ -81,7 +81,7 @@ const CAPITULOS: { nombre: string; claves: string[] }[] = [
   },
   {
     nombre: 'Acabados y pintura',
-    claves: ['acabado', 'pintura', 'enchape', 'ceramica', 'piso', 'drywall', 'estuco'],
+    claves: ['acabado', 'pintura', 'enchape', 'ceramica', 'piso', 'drywall', 'estuco', 'impermeab'],
   },
   {
     nombre: 'Carpintería y herrajes',

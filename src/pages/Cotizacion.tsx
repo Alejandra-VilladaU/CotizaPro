@@ -1,4 +1,4 @@
-import { Copy, Printer, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { Printer, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -31,7 +31,6 @@ import {
   vence,
 } from '../lib/quote'
 import { useDatos } from '../lib/store'
-import { AYUDA_DUPLICAR_BORRADOR, useDuplicar } from '../lib/useDuplicar'
 import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
 
 export const ULTIMA_ABIERTA = 'cotizapro.ultimaAbierta'
@@ -253,7 +252,6 @@ export default function CotizacionPage() {
     autorizarEdicion,
     esPropia,
   } = useDatos()
-  const duplicarConControl = useDuplicar()
   const { puede, usuario } = useAuth()
   const { id } = useParams()
   const navigate = useNavigate()
@@ -382,20 +380,6 @@ export default function CotizacionPage() {
               Excel
             </Boton>
           )}
-          {puede('cotizaciones.crear') && (
-            <Boton
-              tamano="sm"
-              disabled={actual.estado === 'Borrador'}
-              title={
-                actual.estado === 'Borrador'
-                  ? AYUDA_DUPLICAR_BORRADOR
-                  : 'Crea un borrador nuevo con los mismos materiales y datos del proyecto'
-              }
-              onClick={() => duplicarConControl(actual)}
-            >
-              <Copy size={15} /> Duplicar
-            </Boton>
-          )}
           {(actual.estado === 'Enviada' || actual.estado === 'Vencida') && (
             <Boton tamano="sm" variante="primario" onClick={() => setPagoAbierto(true)}>
               Aceptar y registrar pago
@@ -442,23 +426,6 @@ export default function CotizacionPage() {
         </div>
       )}
 
-      {editable && actual.duplicadaDe != null && (
-        <div className="mb-4">
-          <Banner tono="blue">
-            <span className="flex-1">
-              Copia de la cotización {actual.duplicadaDe}. Ajusta la descripción del proyecto, el
-              cliente y las cantidades antes de generarla.
-            </span>
-            <button
-              type="button"
-              onClick={() => actualizarCotizacion(actual.id, { duplicadaDe: null })}
-              className="font-bold underline"
-            >
-              Entendido
-            </button>
-          </Banner>
-        </div>
-      )}
 
       {avisoStock !== null && (
         <div className="mb-4">
