@@ -223,11 +223,12 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       datos.borradorId === null ? null : (cotizacion(datos.borradorId) ?? null)
     const esPropia = (c: Cotizacion) => usuario !== null && (c.vendedorUid ?? null) === usuario.uid
     const puedeGestionar = (c: Cotizacion) => verTodo || esPropia(c)
-    // Los borradores ajenos no se muestran: son trabajo en curso de otro vendedor.
-    const visible = (c: Cotizacion) => puedeGestionar(c) || c.estado !== 'Borrador'
+    // Un borrador solo lo ve quien lo creó, también frente al administrador: es trabajo en
+    // curso hasta que su dueño lo genere o lo elimine.
+    const visible = (c: Cotizacion) => esPropia(c) || c.estado !== 'Borrador'
     // El borrador solo pertenece a quien lo abrió: al cambiar de usuario se descarta.
     const borrador =
-      borradorGuardado !== null && (verTodo || esPropia(borradorGuardado)) ? borradorGuardado : null
+      borradorGuardado !== null && esPropia(borradorGuardado) ? borradorGuardado : null
 
     const guardarCotizacion = (siguiente: Cotizacion) => {
       remoto(backend.guardarCotizacion(siguiente))
@@ -322,7 +323,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
 
     const asegurarBorrador = (): Cotizacion => {
       const actual = ref.current.borradorId === null ? null : cotizacion(ref.current.borradorId)
-      if (actual !== undefined && actual !== null && actual.estado === 'Borrador' && (verTodo || esPropia(actual)))
+      if (actual !== undefined && actual !== null && actual.estado === 'Borrador' && esPropia(actual))
         return actual
       return crearBorrador()
     }
@@ -339,7 +340,10 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       datos,
       materialesActivos: datos.materiales.filter((m) => m.activo),
       borrador: borrador !== null && borrador.estado === 'Borrador' ? borrador : null,
-      cotizacion,
+      cotizacion: (id) => {
+        const c = cotizacion(id)
+        return c !== undefined && visible(c) ? c : undefined
+      },
       cliente: (id) => (id === null ? undefined : datos.clientes.find((c) => c.id === id)),
       material: (id) => datos.materiales.find((m) => m.id === id),
       cotizacionesDeCliente: (clienteId) =>

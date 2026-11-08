@@ -80,14 +80,14 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
-    // Cotizaciones: el vendedor ve las propias (borradores incluidos) y las ya emitidas de todo el
-    // equipo, para conocer el historial de cada cliente; solo modifica las propias. La app consulta
-    // por separado where('vendedorUid', '==', uid) y where('estado', '!=', 'Borrador').
+    // Cotizaciones: cada perfil ve las propias (borradores incluidos) y las ya emitidas de todo el
+    // equipo, para conocer el historial de cada cliente. Un borrador solo lo lee quien lo creó,
+    // también frente al administrador. La app consulta por separado
+    // where('vendedorUid', '==', uid) y where('estado', '!=', 'Borrador').
     match /cotizaciones/{cotizacionId} {
-      allow read: if esAdmin()
-        || (activo()
-            && (resource.data.vendedorUid == request.auth.uid
-                || resource.data.estado != 'Borrador'));
+      allow read: if activo()
+        && (resource.data.vendedorUid == request.auth.uid
+            || resource.data.estado != 'Borrador');
       allow create: if esAdmin()
         || (tienePermiso('cotizaciones.crear')
             && request.resource.data.vendedorUid == request.auth.uid);
