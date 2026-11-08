@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import CotizacionPublica from './pages/CotizacionPublica'
 import { RequierePassword, RequierePermiso, RequiereSesion, SoloInvitados } from './components/Guards'
 import Layout from './components/Layout'
 import Ajustes from './pages/Ajustes'
@@ -18,6 +19,7 @@ import Usuarios from './pages/Usuarios'
 export default function App() {
   return (
     <Routes>
+      <Route path="/c/:id" element={<CotizacionPublica />} />
       <Route element={<SoloInvitados />}>
         <Route path="/login" element={<Login />} />
       </Route>

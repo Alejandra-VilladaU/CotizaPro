@@ -1,5 +1,6 @@
 import { Copy, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { copiarTexto } from '../lib/portapapeles'
 import { Avatar, Badge, Banner, Boton, Campo, Card, Etiqueta, Kpi, Modal, Vacio } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { claveTemporal, validarPassword } from '../lib/authApi'
@@ -267,7 +268,7 @@ export default function Usuarios() {
                   <RefreshCw size={16} />
                 </Boton>
                 <Boton
-                  onClick={() => void navigator.clipboard.writeText(alta.password)}
+                  onClick={() => void copiarTexto(alta.password)}
                   aria-label="Copiar clave"
                 >
                   <Copy size={16} />

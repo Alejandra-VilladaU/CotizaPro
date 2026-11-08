@@ -115,6 +115,21 @@ service cloud.firestore {
         || (activo() && resource.data.vendedorUid == request.auth.uid);
     }
 
+    // enlaces/{cotizacionId}: copia de solo lectura que ve el cliente en /c/{cotizacionId}, sin
+    // sesión. Solo se lee conociendo el id (no se puede listar). La publica quien puede leer la
+    // cotización al abrir Compartir: su dueño, el administrador o el equipo si ya no es borrador.
+    match /enlaces/{cotizacionId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if request.resource.data.cotizacion.id == cotizacionId
+        && (esAdmin()
+            || (activo()
+                && exists(/databases/$(database)/documents/cotizaciones/$(cotizacionId))
+                && (get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.vendedorUid == request.auth.uid
+                    || get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.estado != 'Borrador')));
+      allow delete: if esAdmin();
+    }
+
     // consecutivos/cotizaciones: contador compartido del número de cotización. Cualquier
     // vendedor activo lo incrementa dentro de una transacción, pero nunca lo retrocede.
     match /consecutivos/{documento} {

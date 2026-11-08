@@ -1,23 +1,14 @@
 import { ArrowLeft, Download, Printer } from 'lucide-react'
-import { Fragment, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Boton, Vacio } from '../components/ui'
-import { UNIDAD_LABEL, cop, fecha } from '../lib/format'
 import { descargarPdf } from '../lib/pdf'
-import {
-  calcularTotales,
-  porCapitulo,
-  referencia,
-  textoPlano,
-  totalLinea,
-  vence,
-  resumenDeAsesoria,
-} from '../lib/quote'
+import HojaCotizacion from '../components/HojaCotizacion'
 import { useDatos } from '../lib/store'
 
 export default function Pdf() {
   const { id } = useParams()
-  const { cotizacion, cliente, datos, material } = useDatos()
+  const { cotizacion, cliente, datos } = useDatos()
   const [params] = useSearchParams()
   const actual = id === undefined ? undefined : cotizacion(id)
   const listo = actual !== undefined
@@ -48,12 +39,6 @@ export default function Pdf() {
 
   const empresa = datos.empresa
   const cli = cliente(actual.clienteId)
-  const totales = calcularTotales(actual)
-  const capitulos = porCapitulo(actual, datos.materiales)
-  const proyecto = actual.proyecto ?? null
-  const conProyecto =
-    proyecto !== null && (proyecto.descripcion.trim() !== '' || proyecto.responsable.trim() !== '')
-  let numeroItem = 0
 
   return (
     <div className="min-h-full bg-surface py-6 print:bg-white print:py-0">
@@ -75,223 +60,12 @@ export default function Pdf() {
         </div>
       </div>
 
-      <article className="print-sheet mx-auto w-[816px] max-w-full bg-white p-[46px] shadow-[0_10px_30px_rgba(4,36,76,0.12)]">
-        <header className="flex items-start justify-between gap-8 border-b-[3px] border-navy pb-4">
-          <div>
-            <img src={datos.empresa.logoUrl} alt="CotizaPro" className="h-11 w-auto" />
-            <div className="mt-3 text-[11px] leading-relaxed text-muted">
-              <div className="text-[13px] font-bold text-navy">{empresa.nombre}</div>
-              NIT {empresa.nit} · {empresa.direccion}
-              <br />
-              Tel. {empresa.telefono} · {empresa.email}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
-              Cotización
-            </div>
-            <div className="text-[30px] font-extrabold leading-none text-navy">
-              {referencia(actual)}
-            </div>
-            <div className="mt-2 text-[11px] leading-relaxed text-muted">
-              Fecha de emisión: {fecha(actual.emitida ?? actual.creada)}
-              <br />
-              Válida hasta: {fecha(vence(actual))} ({actual.vigenciaDias} días)
-              <br />
-              Asesor: {actual.vendedor}
-            </div>
-          </div>
-        </header>
-
-        <section className="mt-5 grid grid-cols-2 gap-4">
-          <div className="rounded-[8px] bg-surface p-4">
-            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">Cliente</div>
-            <div className="mt-1 text-sm font-bold text-navy">{cli?.nombre ?? 'Sin cliente'}</div>
-            <div className="mt-1 text-[11px] leading-relaxed text-muted">
-              {cli?.documento !== undefined && cli.documento !== '' && (
-                <>
-                  {cli.documento}
-                  <br />
-                </>
-              )}
-              {cli?.telefono ?? ''}
-              {cli?.email !== undefined && cli.email !== '' && (
-                <>
-                  <br />
-                  {cli.email}
-                </>
-              )}
-              {cli?.obra !== undefined && cli.obra !== '' && (
-                <>
-                  <br />
-                  Obra: {cli.obra}
-                </>
-              )}
-            </div>
-          </div>
-          <div className="rounded-[8px] bg-blue-soft p-4">
-            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-blue">
-              Condiciones
-            </div>
-            <div className="mt-1 text-[11px] leading-relaxed text-navy">{empresa.condiciones}</div>
-          </div>
-        </section>
-
-        {conProyecto && (
-          <section className="mt-4 rounded-[8px] border border-line p-4">
-            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">
-              Proyecto
-            </div>
-            {proyecto.descripcion.trim() !== '' && (
-              <p className="mt-1 whitespace-pre-wrap text-[12px] font-semibold leading-relaxed text-navy">
-                {proyecto.descripcion}
-              </p>
-            )}
-            <div className="mt-1 text-[11px] text-muted">
-              Cliente: {cli?.nombre ?? 'Sin cliente'}
-              {proyecto.responsable.trim() !== '' && ` · Responsable: ${proyecto.responsable}`}
-              {` · Asesor: ${actual.vendedor}`}
-            </div>
-          </section>
-        )}
-
-        <table className="mt-5 w-full">
-          <thead>
-            <tr className="bg-navy text-left text-[10px] font-bold uppercase tracking-[0.06em] text-white">
-              <th className="px-3 py-2.5">Ítem</th>
-              <th className="px-3 py-2.5">Descripción</th>
-              <th className="px-3 py-2.5 text-right">Cant.</th>
-              <th className="px-3 py-2.5">Unidad</th>
-              <th className="px-3 py-2.5 text-right">Precio unit.</th>
-              <th className="px-3 py-2.5 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {capitulos.map((cap) => (
-              <Fragment key={cap.nombre}>
-                <tr className="border-b border-line bg-surface">
-                  <td colSpan={5} className="px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.05em] text-navy">
-                    {cap.nombre}
-                  </td>
-                  <td className="px-3 py-2 text-right text-[11px] font-extrabold tabular-nums text-navy">
-                    {cop(cap.subtotal)}
-                  </td>
-                </tr>
-            {cap.items.map((item) => (
-              <tr key={item.materialId} className="border-b border-line">
-                <td className="px-3 py-2.5 text-[11px] text-muted">{(numeroItem += 1)}</td>
-                <td className="px-3 py-2.5">
-                  <div className="text-[12px] font-semibold text-navy">{item.nombre}</div>
-                  <div className="text-[10px] text-muted">
-                    {item.codigo}
-                    {item.descuento > 0 ? ` · descuento ${item.descuento} %` : ''}
-                  </div>
-                  {(() => {
-                    const detalle = material(item.materialId)?.descripcion ?? ''
-                    return detalle === '' ? null : (
-                      <div className="text-[10px] leading-snug text-muted">{detalle}</div>
-                    )
-                  })()}
-                </td>
-                <td className="px-3 py-2.5 text-right text-[12px] tabular-nums">{item.cantidad}</td>
-                <td className="px-3 py-2.5 text-[11px] text-muted">{UNIDAD_LABEL[item.unidad]}</td>
-                <td className="px-3 py-2.5 text-right text-[12px] tabular-nums">
-                  {cop(item.precioUnitario)}
-                </td>
-                <td className="px-3 py-2.5 text-right text-[12px] font-bold tabular-nums">
-                  {cop(totalLinea(item))}
-                </td>
-              </tr>
-            ))}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-
-        <section className="mt-5 flex justify-end">
-          <dl className="w-[300px] text-[12px]">
-            <div className="flex justify-between py-1">
-              <dt className="text-muted">Subtotal</dt>
-              <dd className="font-semibold tabular-nums">{cop(totales.subtotal)}</dd>
-            </div>
-            <div className="flex justify-between py-1">
-              <dt className="text-muted">Descuento ({actual.descuentoGlobal} %)</dt>
-              <dd className="font-semibold tabular-nums">− {cop(totales.descuentoGlobal)}</dd>
-            </div>
-            <div className="flex justify-between py-1">
-              <dt className="text-muted">Base gravable</dt>
-              <dd className="font-semibold tabular-nums">{cop(totales.base)}</dd>
-            </div>
-            <div className="flex justify-between py-1">
-              <dt className="text-muted">IVA {actual.ivaPct} %</dt>
-              <dd className="font-semibold tabular-nums">{cop(totales.iva)}</dd>
-            </div>
-            <div className="mt-2 flex items-end justify-between border-t-2 border-navy pt-2">
-              <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">
-                Total a pagar
-              </dt>
-              <dd className="text-[26px] font-extrabold leading-none tabular-nums text-navy">
-                {cop(totales.total)}
-              </dd>
-            </div>
-          </dl>
-        </section>
-
-        {actual.pago != null && (
-          <section className="mt-5 rounded-[8px] bg-ok-soft p-4">
-            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-ok">
-              Pago recibido
-            </div>
-            <div className="mt-1 text-[11px] leading-relaxed text-navy">
-              {cop(actual.pago.monto)} · {actual.pago.metodo} · {fecha(actual.pago.fecha)}
-              {actual.pago.referencia === '' ? '' : ` · Ref. ${actual.pago.referencia}`}
-              <br />
-              Registrado por {actual.pago.registradoPor}
-              {actual.pago.notas === '' ? '' : ` · ${actual.pago.notas}`}
-            </div>
-          </section>
-        )}
-
-        {actual.asesoria != null && actual.asesoria.respuesta.trim() !== '' && (
-          <section className="mt-6 rounded-[8px] bg-blue-soft p-4">
-            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-blue">
-              Asesoría del proyecto
-            </div>
-            <p className="mt-1 whitespace-pre-wrap text-[11px] font-semibold leading-relaxed text-navy">
-              {resumenDeAsesoria(actual.asesoria)}
-            </p>
-            <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-navy">
-              {textoPlano(actual.asesoria.respuesta)}
-            </p>
-            <p className="mt-2 text-[10px] text-muted">
-              Recomendación de referencia elaborada con el Asesor de proyectos de CotizaPro. Medidas
-              y cantidades deben verificarse en obra.
-            </p>
-          </section>
-        )}
-
-        <section className="mt-6">
-          <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">Notas</div>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted">
-            {actual.notas !== '' ? `${actual.notas} ` : ''}
-            {empresa.notas}
-          </p>
-        </section>
-
-        <footer className="mt-8 flex items-end justify-between gap-8 border-t border-line pt-6">
-          <div className="w-64">
-            <div className="border-t border-navy pt-1.5 text-[10px] text-muted">
-              Firma de aceptación del cliente
-            </div>
-          </div>
-          <div className="text-right">
-            <img src={datos.empresa.logoUrl} alt="CotizaPro" className="ml-auto h-8 w-auto" />
-            <div className="mt-1 text-[10px] text-muted">
-              Cotización generada con CotizaPro
-            </div>
-          </div>
-        </footer>
-      </article>
+      <HojaCotizacion
+        cotizacion={actual}
+        cliente={cli}
+        empresa={empresa}
+        materiales={datos.materiales}
+      />
     </div>
   )
 }
