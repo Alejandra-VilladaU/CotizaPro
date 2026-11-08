@@ -258,7 +258,7 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 | --- | --- | --- |
 | `materiales` | leer y escribir | leer; al aceptar o revertir una cotización puede cambiar únicamente `stock` y `actualizado` |
 | `clientes` | leer, crear, editar y eliminar | leer, crear y editar todos (sin cambiar `creadoPor`); no eliminar |
-| `cotizaciones` | leer todas, editar y eliminar | leer las propias y las no borrador del equipo; editar y eliminar solo las propias (`vendedorUid` = su uid) |
+| `cotizaciones` | leer las propias y las no borrador del equipo (los borradores ajenos no); editar y eliminar | leer las propias y las no borrador del equipo; editar y eliminar solo las propias (`vendedorUid` = su uid) |
 | `config/empresa` y `config/ia` | leer y escribir | solo leer |
 | `consecutivos/cotizaciones` | leer, subir y borrar | leer y subir el contador |
 | `asesorias` | leer todas, editar y eliminar | crear, leer, editar y eliminar solo las propias (`vendedorUid` = su uid) |
@@ -267,8 +267,8 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 Todo acceso exige sesión iniciada y `activo == true` en el perfil, salvo la lectura de un enlace público por su id.
 
 Un vendedor ve las cotizaciones enviadas, aceptadas, rechazadas y vencidas de todo el equipo,
-para saber qué ha comprado cada cliente aunque lo atienda otro vendedor; los borradores ajenos no.
-Cuando el perfil no es administrador, la app escucha dos consultas y las une:
+para saber qué ha comprado cada cliente aunque lo atienda otro vendedor; los borradores ajenos no, tampoco el administrador: un borrador solo lo ve quien lo creó.
+Para todos los perfiles, administrador incluido, la app escucha dos consultas y las une:
 `where('vendedorUid', '==', uid)` (las propias, borradores incluidos) y
 `where('estado', '!=', 'Borrador')` (las emitidas del equipo). Una consulta sin uno de esos
 filtros sería rechazada por las reglas. Las cotizaciones ajenas se abren en modo lectura: solo su

@@ -54,7 +54,6 @@ const traducir = (error: unknown): string => {
 export function backendFirestore(usuario: Usuario): BackendDatos {
   const db = () => dbFirebase()
   const col = (nombre: string): CollectionReference => collection(db(), nombre)
-  const esAdmin = usuario.rol === 'Administrador'
 
   const escribirLote = async (nombre: string, docs: { id: string }[]): Promise<void> => {
     for (let i = 0; i < docs.length; i += MAX_LOTE) {
@@ -79,14 +78,13 @@ export function backendFirestore(usuario: Usuario): BackendDatos {
     suscribir: (cb, onError) => {
       const fallo = (error: unknown) => onError(traducir(error))
 
-      // Un vendedor lee sus cotizaciones (borradores incluidos) y las emitidas del equipo. Las
-      // reglas solo admiten esas dos consultas, así que se escuchan por separado y se unen.
-      const consultasCotizaciones: Query[] = esAdmin
-        ? [col(COLECCIONES.cotizaciones)]
-        : [
-            query(col(COLECCIONES.cotizaciones), where('vendedorUid', '==', usuario.uid)),
-            query(col(COLECCIONES.cotizaciones), where('estado', '!=', 'Borrador')),
-          ]
+      // Cada perfil, administrador incluido, lee sus cotizaciones (borradores incluidos) y las
+      // emitidas del equipo: los borradores ajenos son privados. Las reglas solo admiten esas dos
+      // consultas, así que se escuchan por separado y se unen.
+      const consultasCotizaciones: Query[] = [
+        query(col(COLECCIONES.cotizaciones), where('vendedorUid', '==', usuario.uid)),
+        query(col(COLECCIONES.cotizaciones), where('estado', '!=', 'Borrador')),
+      ]
       const porConsulta = consultasCotizaciones.map(() => new Map<string, Cotizacion>())
 
       const paran = [

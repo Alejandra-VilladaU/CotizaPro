@@ -22,23 +22,23 @@ const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct
 
 /** Reporte global de ventas y cotizaciones: solo visible para el perfil Administrador. */
 export default function Reportes() {
-  const { datos, cliente } = useDatos()
+  const { datos, cliente, cotizacionesVisibles } = useDatos()
   const [dias, setDias] = useState(90)
   const [vendedor, setVendedor] = useState('Todos')
 
   const vendedores = useMemo(() => {
-    const nombres = new Set(datos.cotizaciones.map((c) => c.vendedor).filter((v) => v !== ''))
+    const nombres = new Set(cotizacionesVisibles.map((c) => c.vendedor).filter((v) => v !== ''))
     return ['Todos', ...[...nombres].sort((a, b) => a.localeCompare(b))]
-  }, [datos.cotizaciones])
+  }, [cotizacionesVisibles])
 
   const cotizaciones = useMemo(() => {
     const desde = dias === 0 ? 0 : Date.now() - dias * 86_400_000
-    return datos.cotizaciones.filter(
+    return cotizacionesVisibles.filter(
       (c) =>
         new Date(c.creada).getTime() >= desde &&
         (vendedor === 'Todos' || c.vendedor === vendedor),
     )
-  }, [datos.cotizaciones, dias, vendedor])
+  }, [cotizacionesVisibles, dias, vendedor])
 
   const aceptadas = cotizaciones.filter((c) => c.estado === 'Aceptada')
   const emitidas = cotizaciones.filter((c) => c.estado !== 'Borrador')
