@@ -4,7 +4,15 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Boton, Vacio } from '../components/ui'
 import { UNIDAD_LABEL, cop, fecha } from '../lib/format'
 import { descargarPdf } from '../lib/pdf'
-import { calcularTotales, porCapitulo, referencia, textoPlano, totalLinea, vence } from '../lib/quote'
+import {
+  calcularTotales,
+  porCapitulo,
+  referencia,
+  textoPlano,
+  totalLinea,
+  vence,
+  resumenDeAsesoria,
+} from '../lib/quote'
 import { useDatos } from '../lib/store'
 
 export default function Pdf() {
@@ -250,7 +258,7 @@ export default function Pdf() {
               Asesoría del proyecto
             </div>
             <p className="mt-1 whitespace-pre-wrap text-[11px] font-semibold leading-relaxed text-navy">
-              {actual.asesoria.consulta}
+              {resumenDeAsesoria(actual.asesoria)}
             </p>
             <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-navy">
               {textoPlano(actual.asesoria.respuesta)}

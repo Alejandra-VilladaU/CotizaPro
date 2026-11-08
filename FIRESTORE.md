@@ -90,10 +90,11 @@ Ejemplo:
 | `email` | string | no | |
 | `obra` | string | no | obra o proyecto asociado |
 | `creado` | string ISO | sí | |
-| `creadoPor` | string \| null | sí en escrituras de vendedor | `uid` del vendedor dueño del cliente |
+| `creadoPor` | string \| null | sí en escrituras de vendedor | `uid` de quien registró el cliente; no cambia al editarlo |
 
-`creadoPor` delimita el historial: un vendedor ve sus clientes y los que tengan cotizaciones
-suyas; el administrador ve todos.
+Los clientes son de todo el equipo: cualquier vendedor los ve, los usa en sus cotizaciones y
+actualiza sus datos, así que no hay que registrar el mismo cliente por vendedor. `creadoPor` solo
+deja constancia de quién lo registró.
 
 ## `cotizaciones/{cotizacionId}`
 
@@ -115,7 +116,7 @@ suyas; el administrador ve todos.
 | `stockDescontado` | boolean | no | `true` mientras las cantidades de la cotización están descontadas del inventario; evita descontar dos veces y permite devolverlas si se revierte el estado. Las cotizaciones anteriores a esta versión no lo traen y nunca movieron stock |
 | `autorizacionEdicion` | objeto \| null | sí | `{ por, uid, fecha }` que registra la autorización del administrador para editar una cotización ajena |
 | `proyecto` | objeto \| null | no | `{ descripcion, responsable }`: qué se va a construir y quién está a cargo en obra; encabeza el PDF |
-| `asesoria` | objeto \| null | no | `{ consulta, respuesta, fecha }` de la conversación con el Asesor de proyectos de la que salieron los materiales; se imprime en el PDF |
+| `asesoria` | objeto \| null | no | `{ consulta, resumen, respuesta, fecha }` de la conversación con el Asesor de proyectos de la que salieron los materiales; `resumen` (una o dos frases de la obra) es lo que muestran la cotización y el PDF, junto con el detalle de `respuesta` |
 | `creada` | string ISO | sí | |
 | `emitida` | string ISO \| null | sí | fecha de generación; `null` en borradores |
 | `actualizada` | string ISO | sí | |
@@ -237,8 +238,8 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 | Colección | Administrador | Vendedor |
 | --- | --- | --- |
 | `materiales` | leer y escribir | leer; al aceptar o revertir una cotización puede cambiar únicamente `stock` y `actualizado` |
-| `clientes` | leer, crear, editar y eliminar | leer; crear y editar los propios (`creadoPor` = su uid); no eliminar |
-| `cotizaciones` | leer todas, editar y eliminar | solo las propias (`vendedorUid` = su uid) |
+| `clientes` | leer, crear, editar y eliminar | leer, crear y editar todos (sin cambiar `creadoPor`); no eliminar |
+| `cotizaciones` | leer todas, editar y eliminar | leer las propias y las no borrador del equipo; editar y eliminar solo las propias (`vendedorUid` = su uid) |
 | `config/empresa` y `config/ia` | leer y escribir | solo leer |
 | `consecutivos/cotizaciones` | leer, subir y borrar | leer y subir el contador |
 | `asesorias` | leer todas, editar y eliminar | crear, leer, editar y eliminar solo las propias (`vendedorUid` = su uid) |
@@ -246,13 +247,15 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 
 Todo acceso exige sesión iniciada y `activo == true` en el perfil.
 
-Como un vendedor no puede leer cotizaciones ajenas, la app consulta
-`where('vendedorUid', '==', uid)` cuando el perfil no es administrador: una consulta sin ese
-filtro sería rechazada por las reglas.
+Un vendedor ve las cotizaciones enviadas, aceptadas, rechazadas y vencidas de todo el equipo,
+para saber qué ha comprado cada cliente aunque lo atienda otro vendedor; los borradores ajenos no.
+Cuando el perfil no es administrador, la app escucha dos consultas y las une:
+`where('vendedorUid', '==', uid)` (las propias, borradores incluidos) y
+`where('estado', '!=', 'Borrador')` (las emitidas del equipo). Una consulta sin uno de esos
+filtros sería rechazada por las reglas. Las cotizaciones ajenas se abren en modo lectura: solo su
+dueño o el administrador cambian su estado o registran el pago.
 
-`clientes` se lee completo por todo el equipo a propósito: una cotización necesita mostrar los
-datos de su cliente aunque lo haya registrado otro vendedor. El filtro por vendedor se aplica en
-la app sobre el historial, no en la lectura.
+`clientes` se lee completo por todo el equipo.
 
 ## Publicar las reglas
 

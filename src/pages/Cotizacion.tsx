@@ -29,6 +29,7 @@ import {
   referencia,
   totalLinea,
   vence,
+  resumenDeAsesoria,
 } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
@@ -251,6 +252,7 @@ export default function CotizacionPage() {
     puedeEditar,
     autorizarEdicion,
     esPropia,
+    puedeGestionar,
   } = useDatos()
   const { puede, usuario } = useAuth()
   const { id } = useParams()
@@ -380,7 +382,7 @@ export default function CotizacionPage() {
               Excel
             </Boton>
           )}
-          {(actual.estado === 'Enviada' || actual.estado === 'Vencida') && (
+          {puedeGestionar(actual) && (actual.estado === 'Enviada' || actual.estado === 'Vencida') && (
             <Boton tamano="sm" variante="primario" onClick={() => setPagoAbierto(true)}>
               Aceptar y registrar pago
             </Boton>
@@ -403,7 +405,9 @@ export default function CotizacionPage() {
           <Banner tono={actual.autorizacionEdicion == null ? 'warn' : 'ok'}>
             <span className="flex-1">
               {actual.autorizacionEdicion == null
-                ? `Esta cotización es de ${actual.vendedor}. En modo lectura: para modificarla necesitas autorización explícita.`
+                ? usuario?.rol === 'Administrador'
+                  ? `Esta cotización es de ${actual.vendedor}. En modo lectura: para modificarla necesitas autorización explícita.`
+                  : `Esta cotización es de ${actual.vendedor}. Puedes consultarla, descargarla y compartirla, pero solo ${actual.vendedor} puede cambiar su estado.`
                 : `Edición autorizada por ${actual.autorizacionEdicion.por} el ${fecha(actual.autorizacionEdicion.fecha)}.`}
             </span>
             {actual.autorizacionEdicion == null && usuario?.rol === 'Administrador' && (
@@ -613,7 +617,7 @@ export default function CotizacionPage() {
                 </span>
               </div>
               <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-navy">
-                {actual.asesoria.consulta}
+                {resumenDeAsesoria(actual.asesoria)}
               </p>
               <details className="mt-2">
                 <summary className="cursor-pointer text-[13px] font-bold text-blue">

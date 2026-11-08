@@ -59,9 +59,12 @@ Function que haga de intermediaria; el resto del módulo no cambia.
   `generativelanguage.googleapis.com`. Las imágenes viajan como `inline_data` en base64.
 - El **catálogo** (hasta 200 materiales: código, nombre, unidad, precio, stock) se envía como contexto
   para que el asesor recomiende lo que la ferretería vende y con el precio vigente.
-- Se le pide cerrar la respuesta con dos bloques fijos, en este orden:
+- Se le pide cerrar la respuesta con tres bloques fijos, en este orden:
 
   ```
+  RESUMEN DEL PROYECTO
+  Una o dos frases sobre la obra: qué se hace, dónde, medidas y alcance.
+
   MATERIALES SUGERIDOS
   CODIGO x CANTIDAD | nombre del material
   NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
@@ -94,8 +97,11 @@ Function que haga de intermediaria; el resto del módulo no cambia.
   imágenes adjuntas no se guardan, solo cuántas había. Las conversaciones vencidas se borran al
   abrir el historial.
 - **Asesoría en la cotización**: al pulsar **Agregar** o **Agregar todos**, el borrador en curso
-  guarda la asesoría (`asesoria`: consultas del vendedor y última respuesta, sin la lista de
-  materiales) y, si aún no tiene descripción del proyecto, toma la primera consulta. La
+  guarda la asesoría (`asesoria`: consultas del vendedor, resumen de la obra y última respuesta,
+  sin la lista de materiales). El resumen sale de la sección `RESUMEN DEL PROYECTO` con la que
+  cierra el asesor (una o dos frases sobre qué se hace, dónde, medidas y alcance) y se usa como
+  descripción del proyecto, salvo que el vendedor ya la haya escrito a mano. Si Gemini no lo trae,
+  se usa la primera frase de la consulta. La
   cotización la muestra en la tarjeta **Asesoría del proyecto** y el PDF la imprime como valor
   agregado; el vendedor puede quitarla mientras la cotización sea borrador.
 

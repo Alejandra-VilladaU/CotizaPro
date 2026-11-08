@@ -1,6 +1,14 @@
 import type { jsPDF } from 'jspdf'
 import { UNIDAD_LABEL, cop, fecha } from './format'
-import { calcularTotales, porCapitulo, referencia, textoPlano, totalLinea, vence } from './quote'
+import {
+  calcularTotales,
+  porCapitulo,
+  referencia,
+  textoPlano,
+  totalLinea,
+  vence,
+  resumenDeAsesoria,
+} from './quote'
 import type { Cliente, Cotizacion, Empresa, Material } from './types'
 
 const NAVY: [number, number, number] = [4, 36, 76]
@@ -262,7 +270,7 @@ export async function construirPdf(
     y += 16
     texto('ASESORÍA DEL PROYECTO', MARGEN, y, { size: 8, bold: true, color: AZUL })
     y += 13
-    const consulta: string[] = doc.splitTextToSize(asesoria.consulta, derecha - MARGEN)
+    const consulta: string[] = doc.splitTextToSize(resumenDeAsesoria(asesoria), derecha - MARGEN)
     consulta.forEach((linea) => {
       saltoDePagina(12)
       texto(linea, MARGEN, y, { size: 8.5, bold: true })

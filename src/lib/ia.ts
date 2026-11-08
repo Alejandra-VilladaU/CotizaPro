@@ -126,8 +126,14 @@ Reglas:
   de carpintería, decoración ni iluminación decorativa. Elige solo los que tengan sentido para
   ese proyecto (entre 3 y 6), prefiere los del catálogo, calcula sus cantidades con el mismo
   criterio (área y rendimiento, número de puntos, etc.) y explica en una o dos frases por qué.
-- Cuando la consulta sí sea del alcance, cierra SIEMPRE con estas dos secciones, en este orden,
-  una línea por material y sin texto extra:
+- Cuando la consulta sí sea del alcance, cierra SIEMPRE con estas tres secciones, en este orden y
+  sin texto extra:
+
+RESUMEN DEL PROYECTO
+Una o dos frases, en tercera persona y sin saludos, que describan la obra que se cotiza: qué se
+hace, dónde, medidas principales y alcance. Por ejemplo: "Construcción de un muro en bloque n.º 5
+de 4 × 2,40 m, pañetado por ambas caras, para el cerramiento de un patio." Resume toda la
+conversación, no solo el último mensaje, y no copies la pregunta del usuario.
 
 MATERIALES SUGERIDOS
 CODIGO x CANTIDAD | nombre del material
@@ -137,6 +143,7 @@ MATERIALES COMPLEMENTARIOS
 CODIGO x CANTIDAD | nombre del material
 NO-DISPONIBLE x CANTIDAD unidad | nombre del material que no está en el catálogo
 
+- En las dos secciones de materiales va una línea por material.
 - MATERIALES SUGERIDOS lleva solo lo indispensable para ejecutar lo consultado; MATERIALES
   COMPLEMENTARIOS, la protección, los acabados, las herramientas de obra y los consumibles opcionales.
   No repitas un material en las dos secciones.
@@ -386,18 +393,30 @@ export type Recomendacion = {
   complementarios: GrupoMateriales
 }
 
+const RESUMEN = /RESUMEN DEL PROYECTO/i
 const NECESARIOS = /MATERIALES SUGERIDOS/i
 const COMPLEMENTARIOS = /MATERIALES COMPLEMENTARIOS/i
 
-/** Texto de la respuesta sin las secciones de materiales, que la página muestra aparte. */
+/** Texto de la respuesta sin el resumen ni las secciones de materiales, que van aparte. */
 export const sinListado = (texto: string): string =>
-  texto.split(/MATERIALES (?:SUGERIDOS|COMPLEMENTARIOS)/i)[0].replace(/[*#\s]+$/, '').trim()
+  texto
+    .split(/RESUMEN DEL PROYECTO|MATERIALES (?:SUGERIDOS|COMPLEMENTARIOS)/i)[0]
+    .replace(/[*#\s]+$/, '')
+    .trim()
 
 /** Lo que hay entre el encabezado `inicio` y el siguiente encabezado (o el final). */
 const seccion = (texto: string, inicio: RegExp, siguiente: RegExp): string => {
   const partes = texto.split(inicio)
   return partes.length < 2 ? '' : partes.slice(1).join('\n').split(siguiente)[0]
 }
+
+/** Resumen de la obra con el que cierra el asesor; describe el proyecto en la cotización. */
+export const resumenDe = (texto: string): string =>
+  seccion(texto, RESUMEN, NECESARIOS)
+    .replace(/[*#"]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[:\s-]+/, '')
+    .trim()
 
 const numero = (texto: string): number => Number(texto.replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'))
 

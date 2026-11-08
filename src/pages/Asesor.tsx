@@ -21,6 +21,7 @@ import {
   leerImagen,
   preguntarIA,
   recomendacion,
+  resumenDe,
   sinListado,
   type Adjunto,
   type ConfigIA,
@@ -46,15 +47,26 @@ const SIN_RECOMENDACION: Recomendacion = {
   complementarios: { enInventario: [], noDisponibles: [] },
 }
 
-/** Consultas del vendedor y última respuesta del asesor, para guardarlas en la cotización. */
-const asesoriaActual = (mensajes: Mensaje[]): Asesoria => ({
-  consulta: mensajes
+/** Si el asesor no trajo resumen: la primera frase de la consulta, sin signos de pregunta. */
+const resumenLocal = (consulta: string): string => {
+  const frase = consulta.split(/(?<=[.?!])\s|\n/)[0].replace(/[¿?¡!]/g, '').trim()
+  const corta = frase.length > 160 ? `${frase.slice(0, 157).trimEnd()}…` : frase
+  return corta.charAt(0).toUpperCase() + corta.slice(1)
+}
+
+/** Lo que se guarda en la cotización: el resumen de la obra y el detalle de la última respuesta. */
+const asesoriaActual = (mensajes: Mensaje[]): Asesoria => {
+  const consultas = mensajes
     .filter((m) => m.autor === 'usuario' && m.texto.trim() !== '')
     .map((m) => m.texto.trim())
-    .join('\n'),
-  respuesta: sinListado(mensajes.findLast((m) => m.autor === 'asesor')?.texto ?? ''),
-  fecha: new Date().toISOString(),
-})
+  const ultima = mensajes.findLast((m) => m.autor === 'asesor')?.texto ?? ''
+  return {
+    consulta: consultas.join('\n'),
+    resumen: resumenDe(ultima) || resumenLocal(consultas[0] ?? ''),
+    respuesta: sinListado(ultima),
+    fecha: new Date().toISOString(),
+  }
+}
 
 const vacio = (g: GrupoMateriales): boolean =>
   g.enInventario.length === 0 && g.noDisponibles.length === 0
