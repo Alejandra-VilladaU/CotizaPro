@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Download, Pencil, Share2 } from 'lucide-react'
+import { Download, Pencil, Share2, UserRoundPen } from 'lucide-react'
 import { Badge, Banner, Boton, Buscador, Card, Chip, Etiqueta, Kpi, Vacio } from '../components/ui'
 import Compartir from '../components/Compartir'
+import SelectorCliente from '../components/SelectorCliente'
 import RegistrarPago from '../components/RegistrarPago'
 import { useAuth } from '../lib/auth'
 import { exportarCotizaciones } from '../lib/export'
@@ -63,7 +64,9 @@ export default function Cotizaciones() {
     puedeGestionar,
     registrarPago,
     abrirBorrador,
+    actualizarCotizacion,
   } = useDatos()
+  const [clienteDe, setClienteDe] = useState<string | null>(null)
   const { puede, verTodo } = useAuth()
   const navigate = useNavigate()
   // Los filtros viven en la URL: al volver de una cotización la lista queda como estaba.
@@ -348,6 +351,16 @@ export default function Cotizaciones() {
                             <span className="text-xs text-muted">{cli.tipo}</span>
                           </Link>
                         )}
+                        {c.estado === 'Borrador' && puedeEditar(c) && (
+                          <button
+                            type="button"
+                            onClick={() => setClienteDe(c.id)}
+                            className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-blue"
+                          >
+                            <UserRoundPen size={13} />
+                            {cli === undefined ? 'Elegir cliente' : 'Cambiar cliente'}
+                          </button>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-right text-sm tabular-nums">{c.items.length}</td>
                       <td className="px-3 py-3 text-right text-sm font-extrabold tabular-nums">
@@ -424,6 +437,16 @@ export default function Cotizaciones() {
             </Etiqueta>
           </div>
         </Card>
+      )}
+
+      {clienteDe !== null && (
+        <SelectorCliente
+          onCerrar={() => setClienteDe(null)}
+          onElegir={(nuevo) => {
+            actualizarCotizacion(clienteDe, { clienteId: nuevo.id })
+            setClienteDe(null)
+          }}
+        />
       )}
 
       {pagoDe !== null && (
