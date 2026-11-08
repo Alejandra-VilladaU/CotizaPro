@@ -2,6 +2,7 @@ import {
   BarChart3,
   Boxes,
   FileText,
+  LayoutGrid,
   LogOut,
   Search,
   Settings,
@@ -9,8 +10,10 @@ import {
   ShoppingCart,
   Sparkles,
   Users,
+  X,
   type LucideIcon,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { cop, iniciales } from '../lib/format'
@@ -169,46 +172,99 @@ function Sidebar() {
   )
 }
 
+const AJUSTES: Entrada = { to: '/ajustes', label: 'Ajustes', corto: 'Ajustes', icono: Settings }
+/** Entradas que caben en la barra inferior; si hay más, la última casilla abre "Más". */
+const EN_BARRA = 6
+
 function BarraMovil() {
   const { borrador } = useDatos()
-  const entradas = useEntradas()
+  const { pathname } = useLocation()
+  const [abierto, setAbierto] = useState(false)
+  const todas = [...useEntradas(), AJUSTES]
   const items = borrador?.items.length ?? 0
+  const principales = todas.length <= EN_BARRA ? todas : todas.slice(0, EN_BARRA - 1)
+  const resto = todas.slice(principales.length)
+  const activa = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
+  const enResto = resto.some((e) => activa(e.to))
+
+  useEffect(() => {
+    if (!abierto) return
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAbierto(false)
+    }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  }, [abierto])
+
+  const casilla = 'relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-bold'
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-white lg:hidden">
-      {entradas
-        .filter((e) => e.to !== '/inventario' && e.soloAdmin !== true)
-        .map(({ to, corto, icono: Icono }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/'}
-          className={({ isActive }) =>
-            `relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-bold ${
-              isActive ? 'text-blue' : 'text-muted'
-            }`
-          }
-        >
-          <Icono size={20} aria-hidden />
-          {corto}
-          {to === '/cotizacion' && items > 0 && (
-            <span className="absolute top-1.5 right-[22%] rounded-md bg-blue px-1 text-[10px] font-extrabold text-white">
-              {items}
-            </span>
-          )}
-        </NavLink>
+    <>
+      {abierto && (
+        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setAbierto(false)}>
+          <div className="absolute inset-0 bg-navy/40" />
+          <div
+            id="menu-mas"
+            className="absolute inset-x-0 bottom-[57px] rounded-t-[16px] border-t border-line bg-white p-3 shadow-[0_-8px_24px_rgba(4,36,76,0.18)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+              Más opciones
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {resto.map(({ to, label, icono: Icono }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === '/'}
+                  onClick={() => setAbierto(false)}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center gap-1.5 rounded-[12px] px-2 py-3 text-center text-xs font-bold ${
+                      isActive ? 'bg-blue-soft text-blue' : 'text-navy hover:bg-surface'
+                    }`
+                  }
+                >
+                  <Icono size={22} aria-hidden />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-white lg:hidden">
+        {principales.map(({ to, corto, icono: Icono }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            onClick={() => setAbierto(false)}
+            className={({ isActive }) =>
+              `${casilla} ${isActive && !abierto ? 'text-blue' : 'text-muted'}`
+            }
+          >
+            <Icono size={20} aria-hidden />
+            {corto}
+            {to === '/cotizacion' && items > 0 && (
+              <span className="absolute top-1.5 right-[22%] rounded-md bg-blue px-1 text-[10px] font-extrabold text-white">
+                {items}
+              </span>
+            )}
+          </NavLink>
         ))}
-      <NavLink
-        to="/ajustes"
-        className={({ isActive }) =>
-          `flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-bold ${
-            isActive ? 'text-blue' : 'text-muted'
-          }`
-        }
-      >
-        <Settings size={20} aria-hidden />
-        Ajustes
-      </NavLink>
-    </nav>
+        {resto.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setAbierto((a) => !a)}
+            aria-expanded={abierto}
+            aria-controls="menu-mas"
+            className={`${casilla} ${abierto || enResto ? 'text-blue' : 'text-muted'}`}
+          >
+            {abierto ? <X size={20} aria-hidden /> : <LayoutGrid size={20} aria-hidden />}
+            Más
+          </button>
+        )}
+      </nav>
+    </>
   )
 }
 
