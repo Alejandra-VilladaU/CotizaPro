@@ -1,4 +1,4 @@
-import { Printer, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { Printer, Share2, Sparkles, Trash2, UserRoundPen } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -7,14 +7,13 @@ import {
   Banner,
   Boton,
   Buscador,
-  Campo,
   Card,
   Etiqueta,
-  Modal,
   Stepper,
   Vacio,
 } from '../components/ui'
 import Compartir from '../components/Compartir'
+import SelectorCliente from '../components/SelectorCliente'
 import RegistrarPago from '../components/RegistrarPago'
 import { useAuth } from '../lib/auth'
 import { exportarDetalle } from '../lib/export'
@@ -32,7 +31,7 @@ import {
   resumenDeAsesoria,
 } from '../lib/quote'
 import { useDatos } from '../lib/store'
-import type { Cliente, ItemCotizacion, TipoCliente } from '../lib/types'
+import type { ItemCotizacion } from '../lib/types'
 
 export const ULTIMA_ABIERTA = 'cotizapro.ultimaAbierta'
 
@@ -43,104 +42,6 @@ const TONO_ESTADO = {
   Rechazada: 'danger',
   Vencida: 'warn',
 } as const
-
-function SelectorCliente({
-  onCerrar,
-  onElegir,
-}: {
-  onCerrar: () => void
-  onElegir: (cliente: Cliente) => void
-}) {
-  const { clientesVisibles, crearCliente } = useDatos()
-  const [texto, setTexto] = useState('')
-  const [nuevo, setNuevo] = useState({
-    nombre: '',
-    telefono: '',
-    tipo: 'Particular' as TipoCliente,
-    documento: '',
-    obra: '',
-  })
-
-  const lista = clientesVisibles.filter((c) =>
-    `${c.nombre} ${c.telefono} ${c.tipo}`.toLowerCase().includes(texto.trim().toLowerCase()),
-  )
-
-  return (
-    <Modal titulo="Elegir cliente" subtitulo="Busca uno existente o crea uno nuevo" onCerrar={onCerrar}>
-      <Buscador valor={texto} onCambio={setTexto} placeholder="Buscar cliente por nombre o teléfono…" />
-      <div className="mt-3 max-h-64 divide-y divide-line overflow-y-auto rounded-[10px] border border-line">
-        {lista.length === 0 && <p className="p-4 text-sm text-muted">Sin coincidencias.</p>}
-        {lista.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onElegir(c)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface"
-          >
-            <Avatar texto={iniciales(c.nombre)} size={34} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-navy">{c.nombre}</span>
-              <span className="block text-xs text-muted">
-                {c.tipo} · {c.telefono}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-5 border-t border-line pt-4">
-        <Etiqueta className="mb-2">Crear cliente nuevo</Etiqueta>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Campo
-            etiqueta="Nombre"
-            value={nuevo.nombre}
-            onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })}
-            placeholder="Ej. Don Jorge Ramírez"
-          />
-          <Campo
-            etiqueta="Teléfono"
-            value={nuevo.telefono}
-            onChange={(e) => setNuevo({ ...nuevo, telefono: e.target.value })}
-            placeholder="300 555 0199"
-          />
-          <label className="block">
-            <Etiqueta className="mb-1">Tipo</Etiqueta>
-            <select
-              value={nuevo.tipo}
-              onChange={(e) => setNuevo({ ...nuevo, tipo: e.target.value as TipoCliente })}
-              className="w-full rounded-[10px] border border-line bg-white px-3 py-2.5 text-sm outline-none"
-            >
-              <option value="Particular">Particular</option>
-              <option value="Contratista">Contratista</option>
-              <option value="Empresa">Empresa</option>
-            </select>
-          </label>
-          <Campo
-            etiqueta="Documento / NIT"
-            value={nuevo.documento}
-            onChange={(e) => setNuevo({ ...nuevo, documento: e.target.value })}
-            placeholder="C.C. 71.234.567"
-          />
-          <Campo
-            etiqueta="Obra (opcional)"
-            className="sm:col-span-2"
-            value={nuevo.obra}
-            onChange={(e) => setNuevo({ ...nuevo, obra: e.target.value })}
-            placeholder="Casa Robledo — Cra 80 #64-12"
-          />
-        </div>
-        <Boton
-          variante="primario"
-          className="mt-3 w-full"
-          disabled={nuevo.nombre.trim() === '' || nuevo.telefono.trim() === ''}
-          onClick={() => onElegir(crearCliente(nuevo))}
-        >
-          Crear y usar este cliente
-        </Boton>
-      </div>
-    </Modal>
-  )
-}
 
 function FilaItem({
   item,
@@ -484,10 +385,15 @@ export default function CotizacionPage() {
             <Card className="p-4 sm:col-span-1">
               <Etiqueta className="mb-2">Cliente</Etiqueta>
               {clienteActual === undefined ? (
-                <Boton variante="primario" tamano="sm" onClick={() => setAbrirCliente(true)}>
-                  Elegir cliente
-                </Boton>
+                editable ? (
+                  <Boton variante="primario" tamano="sm" onClick={() => setAbrirCliente(true)}>
+                    Elegir cliente
+                  </Boton>
+                ) : (
+                  <span className="text-sm text-muted">Sin cliente</span>
+                )
               ) : (
+                <>
                 <div className="flex items-center gap-3">
                   <Avatar texto={iniciales(clienteActual.nombre)} size={38} />
                   <div className="min-w-0">
@@ -501,16 +407,13 @@ export default function CotizacionPage() {
                       {clienteActual.tipo} · {clienteActual.telefono}
                     </div>
                   </div>
-                  {editable && (
-                    <button
-                      type="button"
-                      onClick={() => setAbrirCliente(true)}
-                      className="ml-auto shrink-0 text-[13px] font-bold text-blue"
-                    >
-                      Cambiar
-                    </button>
-                  )}
                 </div>
+                {editable && (
+                  <Boton tamano="sm" className="mt-3 w-full" onClick={() => setAbrirCliente(true)}>
+                    <UserRoundPen size={14} /> Cambiar cliente
+                  </Boton>
+                )}
+                </>
               )}
             </Card>
             <Card className="p-4">
