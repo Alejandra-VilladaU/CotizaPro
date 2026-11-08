@@ -66,8 +66,9 @@ service cloud.firestore {
             && request.resource.data.stock is number);
     }
 
-    // Clientes: los lee todo el equipo (una cotización necesita los datos de su cliente),
-    // el vendedor solo puede crear/editar los suyos y nunca eliminarlos.
+    // Clientes: compartidos por todo el equipo, para no registrar el mismo cliente por cada
+    // vendedor. Quien tenga el permiso los crea y actualiza (sin cambiar quién lo creó); solo el
+    // administrador los elimina.
     match /clientes/{clienteId} {
       allow read: if activo();
       allow create: if esAdmin()
@@ -75,16 +76,18 @@ service cloud.firestore {
             && request.resource.data.creadoPor == request.auth.uid);
       allow update: if esAdmin()
         || (tienePermiso('clientes.crear')
-            && resource.data.creadoPor == request.auth.uid
-            && request.resource.data.creadoPor == resource.data.creadoPor);
+            && request.resource.data.get('creadoPor', null) == resource.data.get('creadoPor', null));
       allow delete: if esAdmin();
     }
 
-    // Cotizaciones: el vendedor solo ve y edita las propias; las consultas de la app
-    // filtran por vendedorUid para cumplir estas reglas.
+    // Cotizaciones: el vendedor ve las propias (borradores incluidos) y las ya emitidas de todo el
+    // equipo, para conocer el historial de cada cliente; solo modifica las propias. La app consulta
+    // por separado where('vendedorUid', '==', uid) y where('estado', '!=', 'Borrador').
     match /cotizaciones/{cotizacionId} {
       allow read: if esAdmin()
-        || (activo() && resource.data.vendedorUid == request.auth.uid);
+        || (activo()
+            && (resource.data.vendedorUid == request.auth.uid
+                || resource.data.estado != 'Borrador'));
       allow create: if esAdmin()
         || (tienePermiso('cotizaciones.crear')
             && request.resource.data.vendedorUid == request.auth.uid);

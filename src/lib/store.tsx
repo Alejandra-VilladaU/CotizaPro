@@ -11,7 +11,11 @@ import { useAuth } from './auth'
 import { backendLocalDatos, type BackendDatos, type Datos } from './datosApi'
 import { backendFirestore } from './datosFirestore'
 import { firebaseHabilitado } from './firebase'
-import { estaVencida, itemDesdeMaterial } from './quote'
+import {
+  estaVencida,
+  itemDesdeMaterial,
+  resumenDeAsesoria,
+} from './quote'
 import { CLIENTES_SEED, COTIZACIONES_SEED, EMPRESA_SEED, MATERIALES_SEED } from './seed'
 import type { Faltante } from './inventario'
 import type { Asesoria, Cliente, Cotizacion, Empresa, Material, Pago } from './types'
@@ -79,10 +83,15 @@ type Contexto = {
   cliente: (id: string | null) => Cliente | undefined
   material: (id: string) => Material | undefined
   cotizacionesDeCliente: (clienteId: string) => Cotizacion[]
-  /** Cotizaciones y clientes que el usuario en sesión tiene permitido ver. */
+  /**
+   * Lo que el usuario en sesión puede ver: los clientes son de todo el equipo y, de las
+   * cotizaciones, las propias más las ya emitidas por otros vendedores.
+   */
   cotizacionesVisibles: Cotizacion[]
   clientesVisibles: Cliente[]
   esPropia: (c: Cotizacion) => boolean
+  /** Puede cambiar el estado o registrar el pago: el dueño de la cotización o el administrador. */
+  puedeGestionar: (c: Cotizacion) => boolean
   puedeEditar: (c: Cotizacion) => boolean
   autorizarEdicion: (id: string) => void
 
@@ -213,6 +222,9 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
     const borradorGuardado =
       datos.borradorId === null ? null : (cotizacion(datos.borradorId) ?? null)
     const esPropia = (c: Cotizacion) => usuario !== null && (c.vendedorUid ?? null) === usuario.uid
+    const puedeGestionar = (c: Cotizacion) => verTodo || esPropia(c)
+    // Los borradores ajenos no se muestran: son trabajo en curso de otro vendedor.
+    const visible = (c: Cotizacion) => puedeGestionar(c) || c.estado !== 'Borrador'
     // El borrador solo pertenece a quien lo abrió: al cambiar de usuario se descarta.
     const borrador =
       borradorGuardado !== null && (verTodo || esPropia(borradorGuardado)) ? borradorGuardado : null
@@ -332,18 +344,13 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
       material: (id) => datos.materiales.find((m) => m.id === id),
       cotizacionesDeCliente: (clienteId) =>
         datos.cotizaciones
-          .filter((c) => c.clienteId === clienteId && (verTodo || esPropia(c)))
+          .filter((c) => c.clienteId === clienteId && visible(c))
           .sort((a, b) => b.creada.localeCompare(a.creada)),
 
-      cotizacionesVisibles: datos.cotizaciones.filter((c) => verTodo || esPropia(c)),
-      clientesVisibles: verTodo
-        ? datos.clientes
-        : datos.clientes.filter(
-            (cl) =>
-              (cl.creadoPor ?? null) === (usuario?.uid ?? null) ||
-              datos.cotizaciones.some((c) => c.clienteId === cl.id && esPropia(c)),
-          ),
+      cotizacionesVisibles: datos.cotizaciones.filter(visible),
+      clientesVisibles: datos.clientes,
       esPropia,
+      puedeGestionar,
       // El administrador no edita cotizaciones ajenas sin registrar autorización explícita.
       puedeEditar: (c) =>
         usuario !== null &&
@@ -485,7 +492,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
 
       cambiarEstado: (id, estado) => {
         const actual = cotizacion(id)
-        if (actual === undefined) return []
+        if (actual === undefined || !puedeGestionar(actual)) return []
         const descontar = estado === 'Aceptada' && actual.stockDescontado !== true
         const devolver = estado !== 'Aceptada' && actual.stockDescontado === true
         const faltantes = descontar
@@ -504,7 +511,7 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
 
       registrarPago: (id, pago) => {
         const actual = cotizacion(id)
-        if (actual === undefined) return []
+        if (actual === undefined || !puedeGestionar(actual)) return []
         const faltantes = actual.stockDescontado === true ? [] : moverStock(actual, -1)
         mapear(id, (c) => ({
           ...c,
@@ -518,18 +525,23 @@ export function ProveedorDatos({ children }: { children: ReactNode }) {
 
       adjuntarAsesoria: (asesoria) => {
         const destino = asegurarBorrador()
-        mapear(destino.id, (c) => ({
-          ...c,
-          asesoria,
-          // La consulta sirve de punto de partida si aún no se describió el proyecto.
-          proyecto:
-            c.proyecto != null && c.proyecto.descripcion.trim() !== ''
-              ? c.proyecto
-              : {
-                  descripcion: asesoria.consulta.split('\n')[0],
-                  responsable: c.proyecto?.responsable ?? '',
-                },
-        }))
+        mapear(destino.id, (c) => {
+          // El resumen de la asesoría describe el proyecto, salvo que el vendedor ya lo haya
+          // descrito a mano (una descripción que vino de la asesoría anterior se reemplaza).
+          const descripcion = c.proyecto?.descripcion.trim() ?? ''
+          const anterior = c.asesoria == null ? '' : resumenDeAsesoria(c.asesoria)
+          return {
+            ...c,
+            asesoria,
+            proyecto:
+              descripcion !== '' && descripcion !== anterior
+                ? c.proyecto
+                : {
+                    descripcion: resumenDeAsesoria(asesoria),
+                    responsable: c.proyecto?.responsable ?? '',
+                  },
+          }
+        })
       },
 
       eliminarCotizacion: (id) => {

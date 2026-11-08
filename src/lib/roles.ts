@@ -37,7 +37,7 @@ const PERMISOS_ADMIN: Permiso[] = [
   'asesor.ia',
 ]
 
-/** El vendedor opera el día a día: solo ve y toca sus propios registros. */
+/** El vendedor opera el día a día: comparte clientes y cotizaciones emitidas; solo gestiona las suyas. */
 const PERMISOS_VENDEDOR: Permiso[] = [
   'materiales.buscar',
   'clientes.crear',
@@ -77,7 +77,7 @@ export function puede(usuario: Usuario | null, permiso: Permiso): boolean {
   return usuario.permisos.includes(permiso)
 }
 
-/** Un vendedor solo alcanza sus propios registros; el administrador los ve todos. */
+/** El administrador ve todo, borradores ajenos incluidos; el vendedor no ve borradores ajenos. */
 export function verTodo(usuario: Usuario | null): boolean {
   return usuario !== null && usuario.rol === 'Administrador'
 }

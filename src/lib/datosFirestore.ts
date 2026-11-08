@@ -79,11 +79,15 @@ export function backendFirestore(usuario: Usuario): BackendDatos {
     suscribir: (cb, onError) => {
       const fallo = (error: unknown) => onError(traducir(error))
 
-      // Un vendedor solo puede leer sus propias cotizaciones: la consulta se filtra
-      // por vendedorUid para no chocar con las reglas de seguridad.
-      const consultaCotizaciones: Query = esAdmin
-        ? col(COLECCIONES.cotizaciones)
-        : query(col(COLECCIONES.cotizaciones), where('vendedorUid', '==', usuario.uid))
+      // Un vendedor lee sus cotizaciones (borradores incluidos) y las emitidas del equipo. Las
+      // reglas solo admiten esas dos consultas, así que se escuchan por separado y se unen.
+      const consultasCotizaciones: Query[] = esAdmin
+        ? [col(COLECCIONES.cotizaciones)]
+        : [
+            query(col(COLECCIONES.cotizaciones), where('vendedorUid', '==', usuario.uid)),
+            query(col(COLECCIONES.cotizaciones), where('estado', '!=', 'Borrador')),
+          ]
+      const porConsulta = consultasCotizaciones.map(() => new Map<string, Cotizacion>())
 
       const paran = [
         onSnapshot(
@@ -102,13 +106,20 @@ export function backendFirestore(usuario: Usuario): BackendDatos {
           },
           fallo,
         ),
-        onSnapshot(
-          consultaCotizaciones,
-          (snap) => {
-            const cotizaciones = snap.docs.map((d) => ({ ...(d.data() as Cotizacion), id: d.id }))
-            cb({ cotizaciones })
-          },
-          fallo,
+        ...consultasCotizaciones.map((consulta, i) =>
+          onSnapshot(
+            consulta,
+            (snap) => {
+              porConsulta[i] = new Map(
+                snap.docs.map((d) => [d.id, { ...(d.data() as Cotizacion), id: d.id }]),
+              )
+              // Si una cotización llega por ambas consultas, gana la de las propias.
+              const unidas = new Map<string, Cotizacion>()
+              ;[...porConsulta].reverse().forEach((m) => m.forEach((c, id) => unidas.set(id, c)))
+              cb({ cotizaciones: [...unidas.values()] })
+            },
+            fallo,
+          ),
         ),
         onSnapshot(
           doc(db(), COLECCIONES.config, DOC_EMPRESA),

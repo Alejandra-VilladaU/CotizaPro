@@ -56,6 +56,8 @@ export type Proyecto = {
 /** Resumen de la consulta al Asesor de proyectos que originó los materiales. */
 export type Asesoria = {
   consulta: string
+  /** Una o dos frases que describen la obra; es lo que se muestra en la cotización y el PDF. */
+  resumen?: string
   respuesta: string
   fecha: string
 }

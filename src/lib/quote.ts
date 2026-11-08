@@ -1,5 +1,5 @@
 import { sumarDias } from './format'
-import type { Cotizacion, ItemCotizacion, Material } from './types'
+import type { Asesoria, Cotizacion, ItemCotizacion, Material } from './types'
 
 export type Totales = {
   items: number
@@ -192,3 +192,7 @@ export function mensajeWhatsApp(
       : ` para ${cotizacion.proyecto.descripcion.trim().replace(/[.\s]+$/, '')}`
   return `Hola ${nombreCliente}, le comparto la cotización ${numero}${proyecto} por ${totalTexto} (${cotizacion.items.length} materiales), válida hasta el ${fechaVence}. Cualquier ajuste me avisa. — ${vendedor}, ${empresa}.`
 }
+
+/** Lo que describe la asesoría en la cotización: su resumen o, si no lo trae, la primera consulta. */
+export const resumenDeAsesoria = (asesoria: Asesoria): string =>
+  asesoria.resumen?.trim() || asesoria.consulta.split('\n')[0].trim()

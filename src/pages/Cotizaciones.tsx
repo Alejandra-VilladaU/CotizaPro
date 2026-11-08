@@ -60,6 +60,7 @@ export default function Cotizaciones() {
     crearBorrador,
     cotizacionesVisibles,
     puedeEditar,
+    puedeGestionar,
     registrarPago,
     abrirBorrador,
   } = useDatos()
@@ -152,7 +153,7 @@ export default function Cotizaciones() {
           <h1 className="text-[22px] font-extrabold text-navy">Cotizaciones</h1>
           <p className="mt-0.5 text-sm text-muted">
             {conTotales.length} cotizaciones · {copCorto(suma(() => true))} cotizados
-            {verTodo ? ' · todo el equipo' : ' · tus cotizaciones'}
+            {verTodo ? ' · todo el equipo' : ' · tuyas y las emitidas del equipo'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -386,7 +387,7 @@ export default function Cotizaciones() {
                               <Pencil size={14} /> Editar
                             </Boton>
                           )}
-                          {(c.estado === 'Enviada' || c.estado === 'Vencida') && (
+                          {puedeGestionar(c) && (c.estado === 'Enviada' || c.estado === 'Vencida') && (
                             <>
                               <Boton tamano="sm" onClick={() => setPagoDe(c)}>
                                 Aceptar
