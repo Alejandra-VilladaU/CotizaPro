@@ -132,7 +132,10 @@ El bloqueo tiene dos capas:
 
 1. `esConsultaDelNegocio()` filtra en la app y ni siquiera envía la consulta —ahorra cuota— salvo
    que mencione vocabulario del dominio o un material del catálogo, traiga una imagen, o sea un
-   seguimiento corto de una conversación ya abierta ("¿y si la hago de 3 m?").
+   seguimiento corto de una conversación ya abierta ("¿y si la hago de 3 m?"). Antes de eso,
+   `esFueraDelNicho()` rechaza siempre, aunque traiga imagen o palabras de obra, lo que nombre
+   muebles, carpintería o decoración (cocina integral, closet, melamina, mesa, gabinete,
+   bisagras, cortinas, electrodomésticos…).
 2. La instrucción de sistema obliga a Gemini a responder solo la frase de `FUERA_DE_ALCANCE` ante
    cualquier otro tema, sin lista de materiales.
 

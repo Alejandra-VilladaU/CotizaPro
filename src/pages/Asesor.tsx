@@ -16,6 +16,7 @@ import {
 } from '../lib/historialAsesor'
 import {
   esConsultaDelNegocio,
+  esFueraDelNicho,
   FUERA_DE_ALCANCE,
   leerConfigIA,
   leerImagen,
@@ -349,8 +350,9 @@ export default function Asesor() {
 
     // Lo ajeno al negocio ni se envía: ahorra cuota de Gemini y deja claro el alcance.
     const delNegocio =
-      adjuntos.length > 0 ||
-      esConsultaDelNegocio(texto, materialesActivos, mensajes.some((m) => m.autor === 'asesor'))
+      !esFueraDelNicho(texto) &&
+      (adjuntos.length > 0 ||
+        esConsultaDelNegocio(texto, materialesActivos, mensajes.some((m) => m.autor === 'asesor')))
     if (!delNegocio) {
       setMensajes((m) => [
         ...m,
