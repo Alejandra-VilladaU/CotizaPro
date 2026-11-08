@@ -342,6 +342,24 @@ const PALABRAS_DOMINIO = sinTildes(
   .filter((p) => p.length > 2)
 
 /**
+ * Muebles, carpintería y decoración: la comercializadora no los vende, así que se rechazan aunque
+ * la consulta también mencione palabras de obra ("cocina integral", "closet en melamina").
+ */
+const FUERA_DEL_NICHO = new RegExp(
+  `\\b(${[
+    'muebles?', 'mobiliario', 'clo[sc]ets?', 'cocinas? integral(es)?', 'melaminas?',
+    'mdf', 'aglomerados?', 'tapacantos?', 'gabinetes?', 'alacenas?', 'escritorios?', 'sillas?',
+    'sofas?', 'camarotes?', 'repisas?', 'estanter[ia]as?', 'bibliotecas?',
+    'nocheros?', 'mesas?', 'carpinteria', 'ebanisteria', 'decoraci(on|ones)',
+    'cortinas?', 'persianas?', 'electrodomesticos?', 'neveras?', 'bisagras?', 'correderas?',
+    'manijas?',
+  ].join('|')})\\b`,
+)
+
+/** Consulta de muebles, carpintería o decoración, fuera del nicho del negocio. */
+export const esFueraDelNicho = (texto: string): boolean => FUERA_DEL_NICHO.test(sinTildes(texto))
+
+/**
  * Filtro local: evita gastar cuota de Gemini y responder cosas ajenas al negocio. Deja pasar lo
  * que menciona el dominio o algún material del catálogo, los mensajes con imagen (una foto o un
  * plano es por definición del proyecto) y los seguimientos cortos de una conversación ya abierta
@@ -356,6 +374,7 @@ export function esConsultaDelNegocio(
     .split(/[^a-z0-9]+/)
     .filter((p) => p !== '')
   if (palabras.length === 0) return true
+  if (esFueraDelNicho(texto)) return false
 
   const delCatalogo = new Set(
     materiales.flatMap((m) =>
