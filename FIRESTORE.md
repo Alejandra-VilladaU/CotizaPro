@@ -17,6 +17,7 @@ Base de datos: la predeterminada `(default)`, modo nativo.
 | `cotizaciones` | `{cotizacionId}` (`Q...`) | cotizaciones e historial | Administrador y el vendedor dueño |
 | `config` | `empresa` | razón social, NIT, logo, IVA | Administrador |
 | `consecutivos` | `cotizaciones` | último número de cotización emitido | cualquier perfil activo (solo hacia arriba) |
+| `enlaces` | leer, publicar y eliminar | publicar las cotizaciones que puede leer; cualquiera (también sin sesión) lee una por su id, nadie lista la colección |
 | `asesorias` | `{conversacionId}` (`A...`) | historial del Asesor de proyectos (30 días) | Administrador y el vendedor dueño |
 
 Los identificadores los genera la app (por ejemplo `MLX1F2AB3CD`), no son autogenerados por
@@ -204,6 +205,24 @@ vuelve o revisar qué recomendó el asesor. Las imágenes adjuntas no se guardan
 | `creada` / `actualizada` | string ISO | |
 | `vence` | string ISO | `actualizada` + 30 días (`DIAS_HISTORIAL`); al abrir el historial la app borra las vencidas del usuario |
 
+## `enlaces/{cotizacionId}`
+
+Copia de solo lectura de una cotización compartida, para que el cliente la abra sin cuenta en
+`https://<dominio>/c/{cotizacionId}`. El id del documento es el de la cotización. La app la
+publica (o la refresca) cada vez que se abre **Compartir**, y ese enlace va en el mensaje de
+WhatsApp, en el correo y en "Copiar enlace".
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `cotizacion` | objeto | la cotización tal como estaba al compartirla |
+| `cliente` | objeto \| null | datos del cliente que salen en la hoja |
+| `empresa` | objeto | copia de `config/empresa` |
+| `materiales` | array | solo los materiales de la cotización (capítulo y detalle de cada línea) |
+| `publicado` | string ISO | última publicación |
+
+Cualquiera con el enlace la lee, pero no se puede listar la colección. Los cambios hechos después
+de compartir no se ven en el enlace hasta abrir Compartir otra vez.
+
 ## `consecutivos/cotizaciones`
 
 Contador compartido del número de cotización:
@@ -245,7 +264,7 @@ config/empresa ──> valores por defecto de ivaPct y vigenciaDias
 | `asesorias` | leer todas, editar y eliminar | crear, leer, editar y eliminar solo las propias (`vendedorUid` = su uid) |
 | `usuarios` | leer y administrar todos | solo su perfil; únicamente puede tocar `debeCambiarPassword` y `ultimoIngreso` |
 
-Todo acceso exige sesión iniciada y `activo == true` en el perfil.
+Todo acceso exige sesión iniciada y `activo == true` en el perfil, salvo la lectura de un enlace público por su id.
 
 Un vendedor ve las cotizaciones enviadas, aceptadas, rechazadas y vencidas de todo el equipo,
 para saber qué ha comprado cada cliente aunque lo atienda otro vendedor; los borradores ajenos no.

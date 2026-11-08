@@ -1,7 +1,9 @@
 import { Check, Copy, Download, Mail, MessageCircle, Printer } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { armarEnlace, publicarEnlace, urlEnlace } from '../lib/enlaces'
 import { archivoPdf, compartirPdf, descargarPdf } from '../lib/pdf'
+import { copiarTexto } from '../lib/portapapeles'
 import { referencia } from '../lib/quote'
 import { useDatos } from '../lib/store'
 import { Boton, Etiqueta, Modal } from './ui'
@@ -9,8 +11,9 @@ import type { Cotizacion } from '../lib/types'
 
 /**
  * Medios de envío hacia los datos registrados del cliente: WhatsApp a su teléfono y
- * correo a su email. El PDF se genera en el navegador y se adjunta al mensaje; si el
- * dispositivo no admite compartir archivos, se descarga y se abre WhatsApp para adjuntarlo.
+ * correo a su email. Al abrirse publica la copia que el cliente ve sin sesión en `/c/{id}`
+ * y prepara el PDF, que se adjunta al mensaje junto con el enlace; si el dispositivo no
+ * admite compartir archivos, se descarga y se abre WhatsApp para adjuntarlo.
  */
 export default function Compartir({
   cotizacion,
@@ -27,34 +30,66 @@ export default function Compartir({
 }) {
   const { cliente, datos } = useDatos()
   const [copiado, setCopiado] = useState<'enlace' | 'mensaje' | null>(null)
+  const [sinPortapapeles, setSinPortapapeles] = useState(false)
+  const [publicacion, setPublicacion] = useState<'publicando' | 'lista' | 'error'>('publicando')
   const [estado, setEstado] = useState<'listo' | 'generando' | 'descargado' | 'adjuntar'>(
     'listo',
   )
 
-  const enlace = `${window.location.origin}/pdf/${cotizacion.id}`
+  const enlace = urlEnlace(cotizacion.id)
+  const texto = `${mensaje}\n\nVer la cotización: ${enlace}`
   const titulo = `Cotización ${referencia(cotizacion)}${cotizacion.numero === null ? ' (borrador)' : ''}`
   const soloDigitos = telefono.replace(/\D/g, '')
   // Colombia: los números de 10 dígitos necesitan el indicativo 57.
   const internacional = soloDigitos.length === 10 ? `57${soloDigitos}` : soloDigitos
   // En computador se abre WhatsApp Web directamente: no hace falta la app de escritorio.
+  // En celular y tablet, wa.me abre la app de WhatsApp.
+  const tactil = window.matchMedia('(pointer: coarse)').matches
   const wa =
     internacional === ''
       ? null
-      : `https://web.whatsapp.com/send?phone=${internacional}&text=${encodeURIComponent(mensaje)}`
+      : `${tactil ? 'https://wa.me/' : 'https://web.whatsapp.com/send?phone='}${internacional}${
+          tactil ? '?' : '&'
+        }text=${encodeURIComponent(texto)}`
   const correo =
     email === ''
       ? null
-      : `mailto:${email}?subject=${encodeURIComponent(titulo)}&body=${encodeURIComponent(
-          `${mensaje}\n\n${enlace}`,
-        )}`
+      : `mailto:${email}?subject=${encodeURIComponent(titulo)}&body=${encodeURIComponent(texto)}`
 
   const clienteActual = cliente(cotizacion.clienteId)
   const pdf = () => archivoPdf(cotizacion, clienteActual, datos.empresa, datos.materiales)
 
+  // Publica el enlace y prepara el PDF al abrir: el celular solo deja compartir justo
+  // después del toque, sin esperar a que se genere el archivo.
+  const archivo = useRef<File | null>(null)
+  const preparar = useRef<() => { enlace: ReturnType<typeof armarEnlace>; pdf: () => Promise<File> }>(
+    null as never,
+  )
+  preparar.current = () => ({
+    enlace: armarEnlace(cotizacion, clienteActual, datos.empresa, datos.materiales),
+    pdf,
+  })
+  useEffect(() => {
+    let vigente = true
+    const { enlace: copia, pdf: generar } = preparar.current()
+    setPublicacion('publicando')
+    publicarEnlace(copia)
+      .then(() => vigente && setPublicacion('lista'))
+      .catch(() => vigente && setPublicacion('error'))
+    generar()
+      .then((f) => {
+        if (vigente) archivo.current = f
+      })
+      .catch(() => undefined)
+    return () => {
+      vigente = false
+    }
+  }, [cotizacion.id, cotizacion.actualizada])
+
   const enviarWhatsApp = async () => {
     setEstado('generando')
-    const archivo = await pdf()
-    const compartido = await compartirPdf(archivo, titulo, mensaje)
+    const listo = archivo.current ?? (await pdf())
+    const compartido = await compartirPdf(listo, titulo, texto)
     if (compartido) {
       setEstado('listo')
       return
@@ -73,7 +108,11 @@ export default function Compartir({
   }
 
   const copiar = async (valor: string, cual: 'enlace' | 'mensaje') => {
-    await navigator.clipboard.writeText(valor)
+    if (!(await copiarTexto(valor))) {
+      setSinPortapapeles(true)
+      return
+    }
+    setSinPortapapeles(false)
     setCopiado(cual)
     window.setTimeout(() => setCopiado(null), 2000)
   }
@@ -84,7 +123,7 @@ export default function Compartir({
   return (
     <Modal
       titulo={`Compartir ${titulo.toLowerCase()}`}
-      subtitulo="El PDF se adjunta al mensaje, no se envía un enlace"
+      subtitulo="El mensaje lleva el PDF adjunto y el enlace para ver la cotización en línea"
       onCerrar={onCerrar}
     >
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -145,6 +184,21 @@ export default function Compartir({
       <div className="mt-4 rounded-[10px] border border-line bg-surface p-3">
         <Etiqueta className="mb-1">Mensaje que se enviará</Etiqueta>
         <p className="text-sm leading-relaxed text-navy">{mensaje}</p>
+        <p className="mt-1 break-all text-sm text-navy">
+          Ver la cotización:{' '}
+          <a href={enlace} target="_blank" rel="noopener" className="font-semibold text-blue">
+            {enlace}
+          </a>
+        </p>
+        {publicacion === 'publicando' && (
+          <p className="mt-1 text-xs text-muted">Publicando el enlace…</p>
+        )}
+        {publicacion === 'error' && (
+          <p className="mt-1 text-xs font-semibold text-danger">
+            No se pudo publicar el enlace: el cliente no podrá abrirlo. Revisa la conexión y vuelve a
+            abrir Compartir.
+          </p>
+        )}
         <div className="mt-1 text-xs text-muted">
           {telefono === '' ? 'Cliente sin teléfono registrado' : `WhatsApp a ${telefono}`}
           {' · '}
@@ -152,12 +206,24 @@ export default function Compartir({
         </div>
         <button
           type="button"
-          onClick={() => void copiar(mensaje, 'mensaje')}
+          onClick={() => void copiar(texto, 'mensaje')}
           className="mt-2 text-[13px] font-bold text-blue"
         >
           {copiado === 'mensaje' ? 'Mensaje copiado' : 'Copiar mensaje'}
         </button>
       </div>
+
+      {sinPortapapeles && (
+        <div className="mt-3 rounded-[10px] bg-warn-soft p-3 text-[13px] leading-relaxed text-navy">
+          Este navegador no dejó copiar. Mantén presionado el texto y cópialo a mano:
+          <textarea
+            readOnly
+            value={texto}
+            onFocus={(e) => e.currentTarget.select()}
+            className="mt-2 h-24 w-full rounded-md border border-line bg-white p-2 text-xs"
+          />
+        </div>
+      )}
 
       {estado === 'descargado' && (
         <p className="mt-3 rounded-[10px] bg-blue-soft p-3 text-[13px] leading-relaxed text-navy">
