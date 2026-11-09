@@ -11,6 +11,10 @@ import {
 } from '../lib/quote'
 import type { Cliente, Cotizacion, Empresa, Material } from '../lib/types'
 
+// En pantallas angostas la cantidad, la unidad y el precio unitario se muestran bajo la
+// descripción; al imprimir siempre se usa la tabla completa.
+const SOLO_ANCHO = 'hidden sm:table-cell print:table-cell'
+
 /** Hoja imprimible de la cotización: la usan la vista interna y el enlace público del cliente. */
 export default function HojaCotizacion({
   cotizacion: actual,
@@ -31,8 +35,8 @@ export default function HojaCotizacion({
   let numeroItem = 0
 
   return (
-    <article className="print-sheet mx-auto w-[816px] max-w-full bg-white p-[46px] shadow-[0_10px_30px_rgba(4,36,76,0.12)]">
-      <header className="flex items-start justify-between gap-8 border-b-[3px] border-navy pb-4">
+    <article className="print-sheet mx-auto w-[816px] max-w-full bg-white p-4 shadow-[0_10px_30px_rgba(4,36,76,0.12)] sm:p-[46px] print:p-[46px]">
+      <header className="flex flex-col items-start justify-between gap-4 border-b-[3px] sm:flex-row sm:gap-8 print:flex-row print:gap-8 border-navy pb-4">
         <div>
           <img src={empresa.logoUrl} alt="CotizaPro" className="h-11 w-auto" />
           <div className="mt-3 text-[11px] leading-relaxed text-muted">
@@ -42,7 +46,7 @@ export default function HojaCotizacion({
             Tel. {empresa.telefono} · {empresa.email}
           </div>
         </div>
-        <div className="text-right">
+        <div className="sm:text-right print:text-right">
           <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
             Cotización
           </div>
@@ -59,7 +63,7 @@ export default function HojaCotizacion({
         </div>
       </header>
 
-      <section className="mt-5 grid grid-cols-2 gap-4">
+      <section className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 print:grid-cols-2">
         <div className="rounded-[8px] bg-surface p-4">
           <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">Cliente</div>
           <div className="mt-1 text-sm font-bold text-navy">{cli?.nombre ?? 'Sin cliente'}</div>
@@ -111,33 +115,42 @@ export default function HojaCotizacion({
         </section>
       )}
 
-      <table className="mt-5 w-full">
+      <table className="mt-5 w-full table-fixed sm:table-auto print:table-auto">
         <thead>
           <tr className="bg-navy text-left text-[10px] font-bold uppercase tracking-[0.06em] text-white">
-            <th className="px-3 py-2.5">Ítem</th>
-            <th className="px-3 py-2.5">Descripción</th>
-            <th className="px-3 py-2.5 text-right">Cant.</th>
-            <th className="px-3 py-2.5">Unidad</th>
-            <th className="px-3 py-2.5 text-right">Precio unit.</th>
-            <th className="px-3 py-2.5 text-right">Total</th>
+            <th className="w-8 px-2 py-2.5 sm:w-auto sm:px-3 print:w-auto print:px-3">Ítem</th>
+            <th className="px-2 py-2.5 sm:px-3 print:px-3">Descripción</th>
+            <th className={`${SOLO_ANCHO} px-3 py-2.5 text-right`}>Cant.</th>
+            <th className={`${SOLO_ANCHO} px-3 py-2.5`}>Unidad</th>
+            <th className={`${SOLO_ANCHO} px-3 py-2.5 text-right`}>Precio unit.</th>
+            <th className="w-[104px] px-2 py-2.5 text-right sm:w-auto sm:px-3 print:w-auto print:px-3">Total</th>
           </tr>
         </thead>
         <tbody>
           {capitulos.map((cap) => (
             <Fragment key={cap.nombre}>
               <tr className="border-b border-line bg-surface">
-                <td colSpan={5} className="px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.05em] text-navy">
-                  {cap.nombre}
-                </td>
-                <td className="px-3 py-2 text-right text-[11px] font-extrabold tabular-nums text-navy">
+                {[2, 5].map((columnas) => (
+                  <td
+                    key={columnas}
+                    colSpan={columnas}
+                    className={`${columnas === 2 ? 'sm:hidden print:hidden' : SOLO_ANCHO} px-2 py-2 text-[11px] font-extrabold uppercase tracking-[0.05em] text-navy sm:px-3 print:px-3`}
+                  >
+                    {cap.nombre}
+                  </td>
+                ))}
+                <td className="whitespace-nowrap px-2 py-2 text-right text-[11px] font-extrabold sm:px-3 print:px-3 tabular-nums text-navy">
                   {cop(cap.subtotal)}
                 </td>
               </tr>
           {cap.items.map((item) => (
             <tr key={item.materialId} className="border-b border-line">
-              <td className="px-3 py-2.5 text-[11px] text-muted">{(numeroItem += 1)}</td>
-              <td className="px-3 py-2.5">
+              <td className="px-2 py-2.5 align-top text-[11px] text-muted sm:px-3 print:px-3">{(numeroItem += 1)}</td>
+              <td className="break-words px-2 py-2.5 sm:px-3 print:px-3">
                 <div className="text-[12px] font-semibold text-navy">{item.nombre}</div>
+                <div className="text-[11px] tabular-nums text-navy sm:hidden print:hidden">
+                  {item.cantidad} {UNIDAD_LABEL[item.unidad]} × {cop(item.precioUnitario)}
+                </div>
                 <div className="text-[10px] text-muted">
                   {item.codigo}
                   {item.descuento > 0 ? ` · descuento ${item.descuento} %` : ''}
@@ -149,12 +162,12 @@ export default function HojaCotizacion({
                   )
                 })()}
               </td>
-              <td className="px-3 py-2.5 text-right text-[12px] tabular-nums">{item.cantidad}</td>
-              <td className="px-3 py-2.5 text-[11px] text-muted">{UNIDAD_LABEL[item.unidad]}</td>
-              <td className="px-3 py-2.5 text-right text-[12px] tabular-nums">
+              <td className={`${SOLO_ANCHO} px-3 py-2.5 text-right text-[12px] tabular-nums`}>{item.cantidad}</td>
+              <td className={`${SOLO_ANCHO} px-3 py-2.5 text-[11px] text-muted`}>{UNIDAD_LABEL[item.unidad]}</td>
+              <td className={`${SOLO_ANCHO} px-3 py-2.5 text-right text-[12px] tabular-nums`}>
                 {cop(item.precioUnitario)}
               </td>
-              <td className="px-3 py-2.5 text-right text-[12px] font-bold tabular-nums">
+              <td className="whitespace-nowrap px-2 py-2.5 text-right align-top text-[12px] font-bold tabular-nums sm:px-3 print:px-3">
                 {cop(totalLinea(item))}
               </td>
             </tr>
@@ -165,7 +178,7 @@ export default function HojaCotizacion({
       </table>
 
       <section className="mt-5 flex justify-end">
-        <dl className="w-[300px] text-[12px]">
+        <dl className="w-full text-[12px] sm:w-[300px] print:w-[300px]">
           <div className="flex justify-between py-1">
             <dt className="text-muted">Subtotal</dt>
             <dd className="font-semibold tabular-nums">{cop(totales.subtotal)}</dd>
@@ -186,7 +199,7 @@ export default function HojaCotizacion({
             <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">
               Total a pagar
             </dt>
-            <dd className="text-[26px] font-extrabold leading-none tabular-nums text-navy">
+            <dd className="text-[22px] font-extrabold sm:text-[26px] print:text-[26px] leading-none tabular-nums text-navy">
               {cop(totales.total)}
             </dd>
           </div>
@@ -234,8 +247,8 @@ export default function HojaCotizacion({
         </p>
       </section>
 
-      <footer className="mt-8 flex items-end justify-between gap-8 border-t border-line pt-6">
-        <div className="w-64">
+      <footer className="mt-8 flex items-end justify-between gap-4 sm:gap-8 border-t border-line pt-6">
+        <div className="w-40 sm:w-64 print:w-64">
           <div className="border-t border-navy pt-1.5 text-[10px] text-muted">
             Firma de aceptación del cliente
           </div>
